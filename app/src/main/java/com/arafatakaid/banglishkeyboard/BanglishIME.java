@@ -23,7 +23,6 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
 
     private DictionaryHelper dictionaryHelper;
     private GeminiHelper geminiHelper;
-    private String lastSuggestion = "";
 
     @Override
     public void onCreate() {
@@ -43,12 +42,11 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         suggestionBar.setBackgroundColor(0xFFEDEDED);
 
         suggestionText = new TextView(this);
-        suggestionText.setText("Bangla likhun ba mic e bolun...");
+        suggestionText.setText("Bangla likhun, tarpor Convert chapun");
         suggestionText.setTextSize(16);
         suggestionText.setTextColor(0xFF333333);
         suggestionText.setLayoutParams(new LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        suggestionText.setOnClickListener(v -> commitSuggestion());
 
         Button convertButton = new Button(this);
         convertButton.setText("Convert");
@@ -68,6 +66,7 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         return root;
     }
 
+    // Convert chapleyi ekhon sathe sathe bangla muche banglish bosbe
     private void convertCurrentText() {
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
@@ -77,26 +76,29 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
             Toast.makeText(this, "Kono Bangla text pawa jayni", Toast.LENGTH_SHORT).show();
             return;
         }
-        processBanglaText(before.toString().trim());
+        String banglaText = before.toString().trim();
+        int banglaLength = before.length();
+        processBanglaText(banglaText, banglaLength);
     }
 
     public void handleVoiceResult(String recognizedBangla) {
-        processBanglaText(recognizedBangla);
+        processBanglaText(recognizedBangla, -1);
     }
 
-    private void processBanglaText(String banglaText) {
+    // banglaLength: text field theke koto character muchte hobe (voice hole -1, mane notun kore boshbe)
+    private void processBanglaText(String banglaText, int banglaLength) {
         suggestionText.setText("Convert hocche...");
 
         String dictResult = dictionaryHelper.lookup(banglaText);
         if (dictResult != null) {
-            showSuggestion(dictResult);
+            commitBanglish(dictResult, banglaLength);
             return;
         }
 
         geminiHelper.convertToBanglish(banglaText, new GeminiHelper.ResultCallback() {
             @Override
             public void onResult(String banglishText) {
-                showSuggestion(banglishText);
+                commitBanglish(banglishText, banglaLength);
             }
 
             @Override
@@ -106,23 +108,16 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         });
     }
 
-    private void showSuggestion(String banglishText) {
-        lastSuggestion = banglishText;
-        suggestionText.setText(banglishText + "  (tap korun bosate)");
-    }
-
-    private void commitSuggestion() {
-        if (lastSuggestion.isEmpty()) return;
+    // Ekhane sathe sathe text field e boshiye deya hocche, alada tap lagbe na
+    private void commitBanglish(String banglishText, int banglaLength) {
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
 
-        CharSequence before = ic.getTextBeforeCursor(200, 0);
-        if (before != null && before.length() > 0) {
-            ic.deleteSurroundingText(before.length(), 0);
+        if (banglaLength > 0) {
+            ic.deleteSurroundingText(banglaLength, 0);
         }
-        ic.commitText(lastSuggestion + " ", 1);
-        suggestionText.setText("Bangla likhun ba mic e bolun...");
-        lastSuggestion = "";
+        ic.commitText(banglishText + " ", 1);
+        suggestionText.setText("Bangla likhun, tarpor Convert chapun");
     }
 
     @Override
