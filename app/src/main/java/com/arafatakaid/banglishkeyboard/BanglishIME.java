@@ -22,13 +22,11 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     private TextView suggestionText;
 
     private DictionaryHelper dictionaryHelper;
-    private GeminiHelper geminiHelper;
 
     @Override
     public void onCreate() {
         super.onCreate();
         dictionaryHelper = DictionaryHelper.getInstance(this);
-        geminiHelper = new GeminiHelper();
     }
 
     @Override
@@ -66,7 +64,6 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         return root;
     }
 
-    // Convert chapleyi ekhon sathe sathe bangla muche banglish bosbe
     private void convertCurrentText() {
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
@@ -85,30 +82,20 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         processBanglaText(recognizedBangla, -1);
     }
 
-    // banglaLength: text field theke koto character muchte hobe (voice hole -1, mane notun kore boshbe)
+    // Ekhon r internet lagbe na - dictionary age check hobe, na পেলে offline converter
     private void processBanglaText(String banglaText, int banglaLength) {
-        suggestionText.setText("Convert hocche...");
-
         String dictResult = dictionaryHelper.lookup(banglaText);
+        String banglishResult;
+
         if (dictResult != null) {
-            commitBanglish(dictResult, banglaLength);
-            return;
+            banglishResult = dictResult;
+        } else {
+            banglishResult = BanglaToBanglishConverter.convert(banglaText);
         }
 
-        geminiHelper.convertToBanglish(banglaText, new GeminiHelper.ResultCallback() {
-            @Override
-            public void onResult(String banglishText) {
-                commitBanglish(banglishText, banglaLength);
-            }
-
-            @Override
-            public void onError(String message) {
-                suggestionText.setText("Error: " + message);
-            }
-        });
+        commitBanglish(banglishResult, banglaLength);
     }
 
-    // Ekhane sathe sathe text field e boshiye deya hocche, alada tap lagbe na
     private void commitBanglish(String banglishText, int banglaLength) {
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
