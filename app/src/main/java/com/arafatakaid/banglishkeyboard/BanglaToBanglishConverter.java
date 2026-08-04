@@ -10,74 +10,74 @@ public class BanglaToBanglishConverter {
     private static final Map<Character, String> VOWEL_SIGNS = new HashMap<>();
 
     static {
-        // Consonants (byanjonborno) - default/inherent vowel bade
-        CONSONANTS.put('ক', "k");
-        CONSONANTS.put('খ', "kh");
-        CONSONANTS.put('গ', "g");
-        CONSONANTS.put('ঘ', "gh");
-        CONSONANTS.put('ঙ', "ng");
-        CONSONANTS.put('চ', "ch");
-        CONSONANTS.put('ছ', "chh");
-        CONSONANTS.put('জ', "j");
-        CONSONANTS.put('ঝ', "jh");
-        CONSONANTS.put('ঞ', "ng");
-        CONSONANTS.put('ট', "t");
-        CONSONANTS.put('ঠ', "th");
-        CONSONANTS.put('ড', "d");
-        CONSONANTS.put('ঢ', "dh");
-        CONSONANTS.put('ণ', "n");
-        CONSONANTS.put('ত', "t");
-        CONSONANTS.put('থ', "th");
-        CONSONANTS.put('দ', "d");
-        CONSONANTS.put('ধ', "dh");
-        CONSONANTS.put('ন', "n");
-        CONSONANTS.put('প', "p");
-        CONSONANTS.put('ফ', "f");
-        CONSONANTS.put('ব', "b");
-        CONSONANTS.put('ভ', "bh");
-        CONSONANTS.put('ম', "m");
-        CONSONANTS.put('য', "j");
-        CONSONANTS.put('র', "r");
-        CONSONANTS.put('ল', "l");
-        CONSONANTS.put('শ', "sh");
-        CONSONANTS.put('ষ', "sh");
-        CONSONANTS.put('স', "s");
-        CONSONANTS.put('হ', "h");
-        CONSONANTS.put('ড়', "r");
-        CONSONANTS.put('ঢ়', "rh");
-        CONSONANTS.put('য়', "y");
-        CONSONANTS.put('ৎ', "t");
+        // Byanjonborno (consonants)
+        CONSONANTS.put('\u0995', "k");
+        CONSONANTS.put('\u0996', "kh");
+        CONSONANTS.put('\u0997', "g");
+        CONSONANTS.put('\u0998', "gh");
+        CONSONANTS.put('\u0999', "ng");
+        CONSONANTS.put('\u099A', "ch");
+        CONSONANTS.put('\u099B', "chh");
+        CONSONANTS.put('\u099C', "j");
+        CONSONANTS.put('\u099D', "jh");
+        CONSONANTS.put('\u099E', "ng");
+        CONSONANTS.put('\u099F', "t");
+        CONSONANTS.put('\u09A0', "th");
+        CONSONANTS.put('\u09A1', "d");
+        CONSONANTS.put('\u09A2', "dh");
+        CONSONANTS.put('\u09A3', "n");
+        CONSONANTS.put('\u09A4', "t");
+        CONSONANTS.put('\u09A5', "th");
+        CONSONANTS.put('\u09A6', "d");
+        CONSONANTS.put('\u09A7', "dh");
+        CONSONANTS.put('\u09A8', "n");
+        CONSONANTS.put('\u09AA', "p");
+        CONSONANTS.put('\u09AB', "f");
+        CONSONANTS.put('\u09AC', "b");
+        CONSONANTS.put('\u09AD', "bh");
+        CONSONANTS.put('\u09AE', "m");
+        CONSONANTS.put('\u09AF', "j");
+        CONSONANTS.put('\u09B0', "r");
+        CONSONANTS.put('\u09B2', "l");
+        CONSONANTS.put('\u09B6', "sh");
+        CONSONANTS.put('\u09B7', "sh");
+        CONSONANTS.put('\u09B8', "s");
+        CONSONANTS.put('\u09B9', "h");
+        CONSONANTS.put('\u09DC', "r");
+        CONSONANTS.put('\u09DD', "rh");
+        CONSONANTS.put('\u09DF', "y");
+        CONSONANTS.put('\u09CE', "t");
 
         // Shorborno (independent vowels)
-        VOWELS.put('অ', "o");
-        VOWELS.put('আ', "a");
-        VOWELS.put('ই', "i");
-        VOWELS.put('ঈ', "i");
-        VOWELS.put('উ', "u");
-        VOWELS.put('ঊ', "u");
-        VOWELS.put('ঋ', "ri");
-        VOWELS.put('এ', "e");
-        VOWELS.put('ঐ', "oi");
-        VOWELS.put('ও', "o");
-        VOWELS.put('ঔ', "ou");
+        VOWELS.put('\u0985', "o");
+        VOWELS.put('\u0986', "a");
+        VOWELS.put('\u0987', "i");
+        VOWELS.put('\u0988', "i");
+        VOWELS.put('\u0989', "u");
+        VOWELS.put('\u098A', "u");
+        VOWELS.put('\u098B', "ri");
+        VOWELS.put('\u098F', "e");
+        VOWELS.put('\u0990', "oi");
+        VOWELS.put('\u0993', "o");
+        VOWELS.put('\u0994', "ou");
 
-        // Kar (vowel signs) - consonant er sathe jog hoy
-        VOWEL_SIGNS.put('া', "a");
-        VOWEL_SIGNS.put('ি', "i");
-        VOWEL_SIGNS.put('ী', "i");
-        VOWEL_SIGNS.put('ু', "u");
-        VOWEL_SIGNS.put('ূ', "u");
-        VOWEL_SIGNS.put('ৃ', "ri");
-        VOWEL_SIGNS.put('ে', "e");
-        VOWEL_SIGNS.put('ৈ', "oi");
-        VOWEL_SIGNS.put('ো', "o");
-        VOWEL_SIGNS.put('ৌ', "ou");
+        // Kar (vowel signs)
+        VOWEL_SIGNS.put('\u09BE', "a");
+        VOWEL_SIGNS.put('\u09BF', "i");
+        VOWEL_SIGNS.put('\u09C0', "i");
+        VOWEL_SIGNS.put('\u09C1', "u");
+        VOWEL_SIGNS.put('\u09C2', "u");
+        VOWEL_SIGNS.put('\u09C3', "ri");
+        VOWEL_SIGNS.put('\u09C7', "e");
+        VOWEL_SIGNS.put('\u09C8', "oi");
+        VOWEL_SIGNS.put('\u09CB', "o");
+        VOWEL_SIGNS.put('\u09CC', "ou");
     }
 
-    private static final char HASANT = '্';
-    private static final char ANUSVARA = 'ং';
-    private static final char CHANDRABINDU = 'ঁ';
-    private static final char VISARGA = 'ঃ';
+    private static final char HASANT = '\u09CD';
+    private static final char ANUSVARA = '\u0982';
+    private static final char CHANDRABINDU = '\u0981';
+    private static final char VISARGA = '\u0983';
 
     public static String convert(String banglaText) {
         StringBuilder result = new StringBuilder();
@@ -105,7 +105,6 @@ public class BanglaToBanglishConverter {
                 char next = hasNext ? word.charAt(i + 1) : '\0';
 
                 if (hasNext && next == HASANT) {
-                    // Hasant thakle inherent vowel add hobe na, jukto okkhor
                     i += 2;
                     continue;
                 } else if (hasNext && VOWEL_SIGNS.containsKey(next)) {
@@ -113,12 +112,10 @@ public class BanglaToBanglishConverter {
                     i += 2;
                     continue;
                 } else if (hasNext && (next == ANUSVARA || next == CHANDRABINDU || next == VISARGA)) {
-                    // Inherent vowel add hobe, tarpor ei chihno process hobe pore loop e
                     sb.append("o");
                     i += 1;
                     continue;
                 } else {
-                    // Kono kar/hasant nai - inherent vowel
                     sb.append("o");
                     i += 1;
                     continue;
@@ -130,20 +127,17 @@ public class BanglaToBanglishConverter {
                 sb.append("ng");
                 i += 1;
             } else if (c == CHANDRABINDU) {
-                // Nasal sound - shব্দে shadharonoto baad deya hoy ba 'n' hisheve dhora hoy
                 i += 1;
             } else if (c == VISARGA) {
                 sb.append("h");
                 i += 1;
             } else if (c == HASANT) {
-                // Alada hasant (age consonant na thakle) - skip
                 i += 1;
             } else {
-                // Bangla noy emon character (number, punctuation) - joto toto rakhbo
                 sb.append(c);
                 i += 1;
             }
         }
         return sb.toString();
     }
-                       }
+}
