@@ -46,11 +46,16 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         suggestionText.setLayoutParams(new LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
+        Button micButton = new Button(this);
+        micButton.setText("🎤");
+        micButton.setOnClickListener(v -> startVoiceInput());
+
         Button convertButton = new Button(this);
         convertButton.setText("Convert");
         convertButton.setOnClickListener(v -> convertCurrentText());
 
         suggestionBar.addView(suggestionText);
+        suggestionBar.addView(micButton);
         suggestionBar.addView(convertButton);
 
         keyboardView = (KeyboardView) LayoutInflater.from(this)
@@ -82,7 +87,6 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         processBanglaText(recognizedBangla, -1);
     }
 
-    // Ekhon r internet lagbe na - dictionary age check hobe, na পেলে offline converter
     private void processBanglaText(String banglaText, int banglaLength) {
         String dictResult = dictionaryHelper.lookup(banglaText);
         String banglishResult;
@@ -142,4 +146,5 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     @Override public void swipeRight() {}
     @Override public void swipeDown() {}
     @Override public void swipeUp() {}
-}
+                                     }
+                       
