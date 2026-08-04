@@ -135,6 +135,8 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     }
 
     private void startVoiceInput() {
+        // মাইকে ক্লিক করলে এখন সাজেস্টিং বারেও দেখা যাবে যে ভয়েস শোনা শুরু হয়েছে
+        suggestionText.setText("🎤 Listening... বলুন...");
         Toast.makeText(this, "Voice input shuru hocche...", Toast.LENGTH_SHORT).show();
         VoiceInputHelper.startListening(this, this);
     }
@@ -146,5 +148,4 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     @Override public void swipeRight() {}
     @Override public void swipeDown() {}
     @Override public void swipeUp() {}
-                                     }
-                       
+}
