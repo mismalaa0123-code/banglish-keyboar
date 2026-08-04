@@ -90,10 +90,9 @@
         <Key android:codes="2509" android:keyLabel="্" android:keyWidth="16%p" android:keyEdgeFlags="right"/>
     </Row>
 
-    <!-- Row 7: কন্ট্রোল ও মাইক -->
+    <!-- Row 7: কন্ট্রোল ও স্পেস -->
     <Row>
-        <Key android:codes="-100" android:keyLabel="🎤" android:keyWidth="15%p" android:keyEdgeFlags="left"/>
-        <Key android:codes="32" android:keyLabel="Space" android:keyWidth="50%p" android:isSticky="true"/>
+        <Key android:codes="32" android:keyLabel="Space" android:keyWidth="65%p" android:isSticky="true" android:keyEdgeFlags="left"/>
         <Key android:codes="-5" android:keyLabel="⌫" android:keyWidth="15%p"/>
         <Key android:codes="10" android:keyLabel="Enter" android:keyWidth="20%p" android:keyEdgeFlags="right"/>
     </Row>
