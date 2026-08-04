@@ -1,6 +1,14 @@
 package com.arafatakaid.banglishkeyboard;
 
+import android.content.Context;
+import org.json.JSONException;
+import org.json.JSONObject;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 public class BanglaToBanglishConverter {
@@ -8,6 +16,9 @@ public class BanglaToBanglishConverter {
     private static final Map<Character, String> CONSONANTS = new HashMap<>();
     private static final Map<Character, String> VOWELS = new HashMap<>();
     private static final Map<Character, String> VOWEL_SIGNS = new HashMap<>();
+    
+    // কাস্টম ডিকশনারি ম্যাপ (যেমন: বাংলা শব্দের বিপরীতে নির্দিষ্ট বাংলিশ রূপ)
+    private static final Map<String, String> CUSTOM_DICTIONARY = new HashMap<>();
 
     static {
         // Byanjonborno (consonants)
@@ -79,6 +90,31 @@ public class BanglaToBanglishConverter {
     private static final char CHANDRABINDU = '\u0981';
     private static final char VISARGA = '\u0983';
 
+    // assets ফোল্ডার থেকে JSON ডিক्रশনারি লোড করার মেথড
+    public static void loadDictionaryFromAssets(Context context, String fileName) {
+        try {
+            InputStream is = context.getAssets().open(fileName);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line);
+            }
+            reader.close();
+            is.close();
+
+            JSONObject jsonObject = new JSONObject(sb.toString());
+            Iterator<String> keys = jsonObject.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                String value = jsonObject.getString(key);
+                CUSTOM_DICTIONARY.put(key, value);
+            }
+        } catch (IOException | JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static String convert(String banglaText) {
         StringBuilder result = new StringBuilder();
         String[] words = banglaText.trim().split("\\s+");
@@ -91,6 +127,11 @@ public class BanglaToBanglishConverter {
     }
 
     private static String convertWord(String word) {
+        // প্রথমে চেক করবে ডিকশনারিতে এই শব্দটি আছে কিনা, থাকলে সরাসরি ডিকশনারির রূপ রিটার্ন করবে
+        if (CUSTOM_DICTIONARY.containsKey(word)) {
+            return CUSTOM_DICTIONARY.get(word);
+        }
+
         StringBuilder sb = new StringBuilder();
         int i = 0;
         int len = word.length();
