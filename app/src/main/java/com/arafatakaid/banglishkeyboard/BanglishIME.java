@@ -16,6 +16,8 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     private static final int KEYCODE_MIC = -100;
     private static final int KEYCODE_DELETE = -5;
     private static final int KEYCODE_SHIFT = -1;
+    private static final int KEYCODE_COPY = -201;
+    private static final int KEYCODE_PASTE = -202;
 
     private KeyboardView keyboardView;
     private Keyboard qwertyKeyboard;
@@ -123,6 +125,19 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
             case KEYCODE_DELETE:
                 ic.deleteSurroundingText(1, 0);
                 break;
+            case KEYCODE_COPY:
+                Toast.makeText(this, "Select text to copy", Toast.LENGTH_SHORT).show();
+                break;
+            case KEYCODE_PASTE:
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                if (clipboard != null && clipboard.hasPrimaryClip()) {
+                    android.content.ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
+                    CharSequence pasteText = item.coerceToText(this);
+                    if (pasteText != null) {
+                        ic.commitText(pasteText, 1);
+                    }
+                }
+                break;
             case KEYCODE_SHIFT:
                 break;
             case 10:
@@ -135,7 +150,6 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     }
 
     private void startVoiceInput() {
-        // মাইকে ক্লিক করলে এখন সাজেস্টিং বারেও দেখা যাবে যে ভয়েস শোনা শুরু হয়েছে
         suggestionText.setText("🎤 Listening... বলুন...");
         Toast.makeText(this, "Voice input shuru hocche...", Toast.LENGTH_SHORT).show();
         VoiceInputHelper.startListening(this, this);
