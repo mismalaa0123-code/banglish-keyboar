@@ -54,6 +54,16 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
             micButton.setOnClickListener(v -> startVoiceInput());
         }
 
+        // প্রিভিউ বারে জমা থাকা বাংলা টেক্সটে ট্যাপ করলে তা ইনপুট করার লজিক
+        if (suggestionText != null) {
+            suggestionText.setOnClickListener(v -> {
+                String text = suggestionText.getText().toString();
+                if (!text.isEmpty() && !text.contains("Listening") && !text.contains("এখানে বাংলা")) {
+                    processBanglaText(text, 0);
+                }
+            });
+        }
+
         return root;
     }
 
@@ -61,14 +71,25 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
 
+        // প্রথমে কার্সরের আগের টেক্সট থেকে চেক করবে
         CharSequence before = ic.getTextBeforeCursor(200, 0);
-        if (before == null || before.length() == 0) {
-            Toast.makeText(this, "Kono Bangla text pawa jayni", Toast.LENGTH_SHORT).show();
+        if (before != null && before.length() > 0) {
+            String banglaText = before.toString().trim();
+            int banglaLength = before.length();
+            processBanglaText(banglaText, banglaLength);
             return;
         }
-        String banglaText = before.toString().trim();
-        int banglaLength = before.length();
-        processBanglaText(banglaText, banglaLength);
+
+        // যদি কার্সরে না থাকে, কিন্তু প্রিভিউ বারে ভয়েস টেক্সট থেকে থাকে
+        if (suggestionText != null) {
+            String voiceText = suggestionText.getText().toString().trim();
+            if (!voiceText.isEmpty() && !voiceText.contains("Listening") && !voiceText.contains("এখানে বাংলা")) {
+                processBanglaText(voiceText, 0);
+                return;
+            }
+        }
+
+        Toast.makeText(this, "Kono Bangla text pawa jayni", Toast.LENGTH_SHORT).show();
     }
 
     // ১. কথা বলা শেষ হলে ফাইনাল বাংলা টেক্সটটি প্রিভিউ টেক্সটভিউতে দেখাবে
@@ -91,6 +112,7 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
 
     private void processBanglaText(String banglaText, int banglaLength) {
         String cleanText = banglaText != null ? banglaText.trim() : "";
+        if (cleanText.isEmpty()) return;
         
         String dictResult = dictionaryHelper.lookup(cleanText);
         String banglishResult;
