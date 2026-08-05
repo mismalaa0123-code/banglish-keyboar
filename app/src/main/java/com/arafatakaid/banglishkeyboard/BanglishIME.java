@@ -3,6 +3,8 @@ package com.arafatakaid.banglishkeyboard;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputConnection;
@@ -23,6 +25,7 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     private TextView suggestionText;
 
     private DictionaryHelper dictionaryHelper;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     public void onCreate() {
@@ -36,7 +39,7 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
 
         suggestionText = root.findViewById(R.id.preview_text_view);
         Button convertButton = root.findViewById(R.id.btn_convert);
-        Button micButton = root.findViewById(R.id.btn_mic); // ভয়েস বাটন বাইন্ড করা হলো
+        Button micButton = root.findViewById(R.id.btn_mic);
         keyboardView = root.findViewById(R.id.keyboard_view);
 
         qwertyKeyboard = new Keyboard(this, R.xml.qwerty);
@@ -68,19 +71,25 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         processBanglaText(banglaText, banglaLength);
     }
 
+    // ১. কথা বলা শেষ হলে ফাইনাল বাংলা টেক্সটটি প্রিভিউ টেক্সটভিউতে দেখাবে
     public void handleVoiceResult(String recognizedBangla) {
-        processBanglaText(recognizedBangla, -1);
+        mainHandler.post(() -> {
+            if (suggestionText != null && recognizedBangla != null) {
+                suggestionText.setText(recognizedBangla);
+            }
+        });
     }
 
-    // ভয়েস বলার সময় লাইভ বাংলা প্রিভিউ দেখানোর জন্য এই মেথডটি যোগ করা হয়েছে
+    // ২. কথা বলা চলাকালীন লাইভ ফাস্ট প্রিভিউ দেখানোর জন্য (UI Thread Safe)
     public void handleVoicePartialResult(String partialText) {
-        if (suggestionText != null && partialText != null) {
-            suggestionText.setText(partialText);
-        }
+        mainHandler.post(() -> {
+            if (suggestionText != null && partialText != null) {
+                suggestionText.setText(partialText);
+            }
+        });
     }
 
     private void processBanglaText(String banglaText, int banglaLength) {
-        // ডিকশনারি সার্চ নিখুঁত করার জন্য অতিরিক্ত স্পেস ট্রিম করা হলো
         String cleanText = banglaText != null ? banglaText.trim() : "";
         
         String dictResult = dictionaryHelper.lookup(cleanText);
