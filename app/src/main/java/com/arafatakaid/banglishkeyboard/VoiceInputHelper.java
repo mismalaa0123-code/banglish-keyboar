@@ -19,16 +19,16 @@ public class VoiceInputHelper {
     public static void startListening(Context context, BanglishIME ime) {
         // মেইন থ্রেডে রান নিশ্চিত করার জন্য Handler ব্যবহার করা হলো
         new Handler(Looper.getMainLooper()).post(() -> {
+            if (context == null) return;
+
             if (!SpeechRecognizer.isRecognitionAvailable(context)) {
                 Toast.makeText(context, "Voice recognition available na ei phone e", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             try {
-                if (speechRecognizer != null) {
-                    speechRecognizer.destroy();
-                    speechRecognizer = null;
-                }
+                // পূর্বে কোনো রিকগনাইজার চালু থাকলে তা নিরাপদভাবে রিলিজ করা
+                releaseRecognizer();
 
                 speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context);
 
@@ -78,14 +78,14 @@ public class VoiceInputHelper {
 
                     @Override
                     public void onPartialResults(Bundle partialResults) {
-                        // কথা বলার সময় লাইভ টেক্সট প্রিভিউ বক্সে দেখানোর জন্য এটি কাজ করবে
+                        // কথা বলার সময় লাইভ বাংলা টেক্সট প্রিভিউ বক্সে দেখানোর জন্য
                         if (partialResults != null) {
                             ArrayList<String> matches = partialResults.getStringArrayList(
                                     SpeechRecognizer.RESULTS_RECOGNITION);
                             if (matches != null && !matches.isEmpty()) {
                                 String partialText = matches.get(0);
                                 if (ime != null) {
-                                    // আপনার BanglishIME ক্লাসে এই লাইভ টেক্সট দেখানোর মেথড থাকতে হবে
+                                    // আপনার BanglishIME ক্লাসে এই লাইভ বাংলা টেক্সট দেখাবে
                                     ime.handleVoicePartialResult(partialText);
                                 }
                             }
@@ -105,11 +105,13 @@ public class VoiceInputHelper {
     }
 
     private static void releaseRecognizer() {
-        if (speechRecognizer != null) {
-            try {
-                speechRecognizer.destroy();
-            } catch (Exception ignored) {}
-            speechRecognizer = null;
-        }
+        new Handler(Looper.getMainLooper()).post(() -> {
+            if (speechRecognizer != null) {
+                try {
+                    speechRecognizer.destroy();
+                } catch (Exception ignored) {}
+                speechRecognizer = null;
+            }
+        });
     }
 }
