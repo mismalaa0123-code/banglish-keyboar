@@ -6,7 +6,7 @@
     android:orientation="vertical"
     android:background="#E2E5E9">
 
-    <!-- ১. প্রিভিউ এবং কনভার্ট বাটন বার (যেখানে বাংলা লেখা ভাসবে) -->
+    <!-- ১. প্রিভিউ এবং কনভার্ট বাটন বার -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="45dp"
@@ -15,7 +15,6 @@
         android:paddingHorizontal="8dp"
         android:background="#FFFFFF">
 
-        <!-- আপনি যা টাইপ বা ভয়েস করবেন তা এখানে শো করবে -->
         <TextView
             android:id="@+id/preview_text_view"
             android:layout_width="0dp"
@@ -28,7 +27,6 @@
             android:singleLine="true"
             android:ellipsize="end" />
 
-        <!-- মাইক্রোফোন বাটন -->
         <Button
             android:id="@+id/btn_mic"
             android:layout_width="wrap_content"
@@ -38,7 +36,6 @@
             android:backgroundTint="#FF9800"
             android:textSize="14sp" />
 
-        <!-- Convert বাটন -->
         <Button
             android:id="@+id/btn_convert"
             android:layout_width="wrap_content"
@@ -49,12 +46,14 @@
             android:textSize="14sp" />
     </LinearLayout>
 
-    <!-- ২. মূল কিবোর্ড ভিউ -->
+    <!-- ২. মূল কিবোর্ড ভিউ (হালকা ১২dp দূরত্ব রাখা হয়েছে) -->
     <android.inputmethodservice.KeyboardView
         android:id="@+id/keyboard_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#E2E5E9"
+        android:paddingBottom="12dp"
+        android:clipToPadding="false"
         android:keyBackground="@drawable/keyboard_key_background"
         android:keyTextColor="#202124"
         android:keyTextSize="20sp"
