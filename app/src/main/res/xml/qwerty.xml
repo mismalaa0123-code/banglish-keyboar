@@ -5,7 +5,22 @@
     android:verticalGap="2dp"
     android:keyHeight="42dp">
 
-    <!-- Row 1: স্বরবর্ণ -->
+    <!-- Row 1: কার চিহ্ন এবং হসন্ত (সবচেয়ে উপরে টাইপিং সুবিধার জন্য) -->
+    <Row>
+        <Key android:codes="2494" android:keyLabel="া" android:keyEdgeFlags="left"/>
+        <Key android:codes="2495" android:keyLabel="ি"/>
+        <Key android:codes="2496" android:keyLabel="ী"/>
+        <Key android:codes="2497" android:keyLabel="ু"/>
+        <Key android:codes="2498" android:keyLabel="ূ"/>
+        <Key android:codes="2499" android:keyLabel="ৃ"/>
+        <Key android:codes="2503" android:keyLabel="ে"/>
+        <Key android:codes="2504" android:keyLabel="ৈ"/>
+        <Key android:codes="2507" android:keyLabel="ো"/>
+        <Key android:codes="2508" android:keyLabel="ৌ"/>
+        <Key android:codes="2509" android:keyLabel="্" android:keyEdgeFlags="right"/>
+    </Row>
+
+    <!-- Row 2: স্বরবর্ণ -->
     <Row>
         <Key android:codes="2437" android:keyLabel="অ" android:keyEdgeFlags="left"/>
         <Key android:codes="2438" android:keyLabel="আ"/>
@@ -20,7 +35,7 @@
         <Key android:codes="2452" android:keyLabel="ঔ" android:keyEdgeFlags="right"/>
     </Row>
 
-    <!-- Row 2: ব্যঞ্জনবর্ণ ১ -->
+    <!-- Row 3: ব্যঞ্জনবর্ণ ১ -->
     <Row>
         <Key android:codes="2453" android:keyLabel="ক" android:keyEdgeFlags="left"/>
         <Key android:codes="2454" android:keyLabel="খ"/>
@@ -35,7 +50,7 @@
         <Key android:codes="2463" android:keyLabel="ট" android:keyEdgeFlags="right"/>
     </Row>
 
-    <!-- Row 3: ব্যঞ্জনবর্ণ ২ -->
+    <!-- Row 4: ব্যঞ্জনবর্ণ ২ -->
     <Row>
         <Key android:codes="2464" android:keyLabel="ঠ" android:keyEdgeFlags="left"/>
         <Key android:codes="2465" android:keyLabel="ড"/>
@@ -50,7 +65,7 @@
         <Key android:codes="2475" android:keyLabel="ফ" android:keyEdgeFlags="right"/>
     </Row>
 
-    <!-- Row 4: ব্যঞ্জনবর্ণ ৩ -->
+    <!-- Row 5: ব্যঞ্জনবর্ণ ৩ -->
     <Row>
         <Key android:codes="2476" android:keyLabel="ব" android:keyEdgeFlags="left"/>
         <Key android:codes="2477" android:keyLabel="ভ"/>
@@ -65,37 +80,23 @@
         <Key android:codes="2524" android:keyLabel="ড়" android:keyEdgeFlags="right"/>
     </Row>
 
-    <!-- Row 5: অতিরিক্ত বর্ণ ও কার (মাত্রা) -->
+    <!-- Row 6: অতিরিক্ত বর্ণ, অনুস্বর-বিসর্গ ও ব্যাকস্পেস/ডিলিট (⌫) -->
     <Row>
-        <Key android:codes="2525" android:keyLabel="ঢ়" android:keyEdgeFlags="left"/>
-        <Key android:codes="2527" android:keyLabel="য়"/>
-        <Key android:codes="2510" android:keyLabel="ৎ"/>
-        <Key android:codes="2434" android:keyLabel="ং"/>
-        <Key android:codes="2435" android:keyLabel="ঃ"/>
-        <Key android:codes="2433" android:keyLabel="ঁ"/>
-        <Key android:codes="2494" android:keyLabel="া"/>
-        <Key android:codes="2495" android:keyLabel="ি"/>
-        <Key android:codes="2496" android:keyLabel="ী"/>
-        <Key android:codes="2497" android:keyLabel="ু"/>
-        <Key android:codes="2498" android:keyLabel="ূ" android:keyEdgeFlags="right"/>
+        <Key android:codes="2525" android:keyLabel="ঢ়" android:keyWidth="14%p" android:keyEdgeFlags="left"/>
+        <Key android:codes="2527" android:keyLabel="য়" android:keyWidth="14%p"/>
+        <Key android:codes="2510" android:keyLabel="ৎ" android:keyWidth="14%p"/>
+        <Key android:codes="2434" android:keyLabel="ং" android:keyWidth="14%p"/>
+        <Key android:codes="2435" android:keyLabel="ঃ" android:keyWidth="14%p"/>
+        <Key android:codes="2433" android:keyLabel="ঁ" android:keyWidth="14%p"/>
+        <Key android:codes="-5" android:keyLabel="⌫" android:keyWidth="16%p" android:keyEdgeFlags="right"/>
     </Row>
 
-    <!-- Row 6: বাকি কার ও হসন্ত -->
-    <Row>
-        <Key android:codes="2499" android:keyLabel="ৃ" android:keyWidth="16%p" android:keyEdgeFlags="left"/>
-        <Key android:codes="2503" android:keyLabel="ে" android:keyWidth="16%p"/>
-        <Key android:codes="2504" android:keyLabel="ৈ" android:keyWidth="16%p"/>
-        <Key android:codes="2507" android:keyLabel="ো" android:keyWidth="16%p"/>
-        <Key android:codes="2508" android:keyLabel="ৌ" android:keyWidth="16%p"/>
-        <Key android:codes="2509" android:keyLabel="্" android:keyWidth="16%p" android:keyEdgeFlags="right"/>
-    </Row>
-
-    <!-- Row 7: কন্ট্রোল, কপি-পেস্ট ও স্পেস -->
+    <!-- Row 7: কন্ট্রোল, কপি-পেস্ট ও বড় স্পেসবার -->
     <Row>
         <Key android:codes="-201" android:keyLabel="Copy" android:keyWidth="15%p" android:keyEdgeFlags="left"/>
         <Key android:codes="-202" android:keyLabel="Paste" android:keyWidth="15%p"/>
-        <Key android:codes="32" android:keyLabel="Space" android:keyWidth="30%p" android:isSticky="true"/>
-        <Key android:codes="-5" android:keyLabel="⌫" android:keyWidth="15%p"/>
+        <Key android:codes="32" android:keyLabel="Space" android:keyWidth="45%p" android:isSticky="true"/>
         <Key android:codes="10" android:keyLabel="Enter" android:keyWidth="25%p" android:keyEdgeFlags="right"/>
     </Row>
 </Keyboard>
+    
