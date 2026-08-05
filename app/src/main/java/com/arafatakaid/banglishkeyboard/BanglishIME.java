@@ -7,7 +7,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputConnection;
 import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,41 +32,22 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
 
     @Override
     public View onCreateInputView() {
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
+        // সরাসরি XML লেআউট ইনফ্লেট করা হলো যাতে ক্র্যাশ না করে
+        View root = LayoutInflater.from(this).inflate(R.layout.keyboard_view, null);
 
-        LinearLayout suggestionBar = new LinearLayout(this);
-        suggestionBar.setOrientation(LinearLayout.HORIZONTAL);
-        suggestionBar.setPadding(16, 16, 16, 16);
-        suggestionBar.setBackgroundColor(0xFFEDEDED);
+        // লেআউট থেকে আইডিগুলো বাইন্ড করা হলো
+        suggestionText = root.findViewById(R.id.preview_text_view);
+        Button convertButton = root.findViewById(R.id.btn_convert);
+        keyboardView = root.findViewById(R.id.keyboard_view);
 
-        suggestionText = new TextView(this);
-        suggestionText.setText("Bangla likhun, tarpor Convert chapun");
-        suggestionText.setTextSize(16);
-        suggestionText.setTextColor(0xFF333333);
-        suggestionText.setLayoutParams(new LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        Button micButton = new Button(this);
-        micButton.setText("🎤");
-        micButton.setOnClickListener(v -> startVoiceInput());
-
-        Button convertButton = new Button(this);
-        convertButton.setText("Convert");
-        convertButton.setOnClickListener(v -> convertCurrentText());
-
-        suggestionBar.addView(suggestionText);
-        suggestionBar.addView(micButton);
-        suggestionBar.addView(convertButton);
-
-        keyboardView = (KeyboardView) LayoutInflater.from(this)
-                .inflate(R.layout.keyboard_view, null);
         qwertyKeyboard = new Keyboard(this, R.xml.qwerty);
         keyboardView.setKeyboard(qwertyKeyboard);
         keyboardView.setOnKeyboardActionListener(this);
 
-        root.addView(suggestionBar);
-        root.addView(keyboardView);
+        if (convertButton != null) {
+            convertButton.setOnClickListener(v -> convertCurrentText());
+        }
+
         return root;
     }
 
@@ -110,7 +90,9 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
             ic.deleteSurroundingText(banglaLength, 0);
         }
         ic.commitText(banglishText + " ", 1);
-        suggestionText.setText("Bangla likhun, tarpor Convert chapun");
+        if (suggestionText != null) {
+            suggestionText.setText("Bangla likhun, tarpor Convert chapun");
+        }
     }
 
     @Override
@@ -150,7 +132,9 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     }
 
     private void startVoiceInput() {
-        suggestionText.setText("🎤 Listening... বলুন...");
+        if (suggestionText != null) {
+            suggestionText.setText("🎤 Listening... বলুন...");
+        }
         Toast.makeText(this, "Voice input shuru hocche...", Toast.LENGTH_SHORT).show();
         VoiceInputHelper.startListening(this, this);
     }
