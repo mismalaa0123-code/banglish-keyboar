@@ -90,7 +90,7 @@ public class BanglaToBanglishConverter {
     private static final char CHANDRABINDU = '\u0981';
     private static final char VISARGA = '\u0983';
 
-    // assets ফোল্ডার থেকে JSON ডিক्रশনারি লোড করার মেথড
+    // assets ফোল্ডার থেকে JSON ডিকশনারি লোড করার মেথড
     public static void loadDictionaryFromAssets(Context context, String fileName) {
         try {
             InputStream is = context.getAssets().open(fileName);
@@ -116,6 +116,8 @@ public class BanglaToBanglishConverter {
     }
 
     public static String convert(String banglaText) {
+        if (banglaText == null || banglaText.trim().isEmpty()) return "";
+        
         StringBuilder result = new StringBuilder();
         String[] words = banglaText.trim().split("\\s+");
 
@@ -127,7 +129,7 @@ public class BanglaToBanglishConverter {
     }
 
     private static String convertWord(String word) {
-        // প্রথমে চেক করবে ডিকশনারিতে এই শব্দটি আছে কিনা, থাকলে সরাসরি ডিকশনারির রূপ রিটার্ন করবে
+        // ১. ডিকশনারিতে আগে চেক করবে
         if (CUSTOM_DICTIONARY.containsKey(word)) {
             return CUSTOM_DICTIONARY.get(word);
         }
@@ -146,18 +148,20 @@ public class BanglaToBanglishConverter {
                 char next = hasNext ? word.charAt(i + 1) : '\0';
 
                 if (hasNext && next == HASANT) {
+                    // হসন্ত থাকলে স্বরবর্ণ স্কিপ করবে
                     i += 2;
                     continue;
                 } else if (hasNext && VOWEL_SIGNS.containsKey(next)) {
+                    // 'কার' থাকলে তার ইংরেজি বসাচ্ছে
                     sb.append(VOWEL_SIGNS.get(next));
                     i += 2;
                     continue;
                 } else if (hasNext && (next == ANUSVARA || next == CHANDRABINDU || next == VISARGA)) {
-                    sb.append("o");
                     i += 1;
                     continue;
                 } else {
-                    sb.append("o");
+                    // **স্মার্ট Schwa লজিক (অনর্থক 'o' রিমুভ)**
+                    // শব্দের শেষের ব্যঞ্জনবর্ণে বা হসন্তযুক্ত জায়গায় কোনো বাড়তি "o" বসবে না
                     i += 1;
                     continue;
                 }
