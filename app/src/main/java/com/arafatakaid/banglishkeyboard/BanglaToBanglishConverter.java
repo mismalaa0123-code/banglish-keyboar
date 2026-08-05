@@ -91,7 +91,7 @@ public class BanglaToBanglishConverter {
     private static final char VISARGA = '\u0983';
     private static final char NUKTA = '\u09BC';
 
-    // JSON ডিকশনারি লোড করার উন্নত মেথড
+    // JSON ডিকশনারি লোড করার মেথড
     public static void loadDictionaryFromAssets(Context context, String fileName) {
         try {
             InputStream is = context.getAssets().open(fileName);
@@ -109,7 +109,6 @@ public class BanglaToBanglishConverter {
             while (keys.hasNext()) {
                 String key = keys.next();
                 String value = jsonObject.getString(key);
-                // ইউনিকোড নরমাল করে ডিকশনারিতে ম্যাপ করা হচ্ছে
                 String normalizedKey = Normalizer.normalize(key, Normalizer.Form.NFC).trim();
                 CUSTOM_DICTIONARY.put(normalizedKey, value);
             }
@@ -121,10 +120,9 @@ public class BanglaToBanglishConverter {
     public static String convert(String banglaText) {
         if (banglaText == null || banglaText.trim().isEmpty()) return "";
         
-        // ১. ইউনিকোড নরমাল করা (যাতে ভেঙে যাওয়া বর্ণগুলো ঠিক হয়ে যায়)
         String normalizedText = Normalizer.normalize(banglaText.trim(), Normalizer.Form.NFC);
         
-        // ২. পুরো বাক্যটি হুবহু ডিকশনারিতে থাকলে সরাসরি দিয়ে দেবে
+        // ডিকশনারিতে হুবহু বাক্য থাকলে
         if (CUSTOM_DICTIONARY.containsKey(normalizedText)) {
             return CUSTOM_DICTIONARY.get(normalizedText);
         }
@@ -140,11 +138,21 @@ public class BanglaToBanglishConverter {
     }
 
     private static String convertWord(String word) {
-        // ১. প্রতিটি আলাদা শব্দ ডিকশনারিতে আগে চেক করবে
+        if (word == null || word.isEmpty()) return "";
+
+        // ১. ডিকশনারি চেক (মূল শব্দ এবং নুকতা ক্লিন করা শব্দ)
+        String cleanedWord = Normalizer.normalize(word, Normalizer.Form.NFC)
+                .replace("\u09BC", "")
+                .trim();
+
         if (CUSTOM_DICTIONARY.containsKey(word)) {
             return CUSTOM_DICTIONARY.get(word);
         }
+        if (CUSTOM_DICTIONARY.containsKey(cleanedWord)) {
+            return CUSTOM_DICTIONARY.get(cleanedWord);
+        }
 
+        // ২. অ্যালগরিদম ফিল্টার
         StringBuilder sb = new StringBuilder();
         int i = 0;
         int len = word.length();
@@ -152,7 +160,6 @@ public class BanglaToBanglishConverter {
         while (i < len) {
             char c = word.charAt(i);
 
-            // কোনো বাড়তি নুকতা থাকলে তা ইগনোর করবে
             if (c == NUKTA) {
                 i++;
                 continue;
@@ -171,9 +178,6 @@ public class BanglaToBanglishConverter {
                     sb.append(VOWEL_SIGNS.get(next));
                     i += 2;
                     continue;
-                } else if (hasNext && (next == ANUSVARA || next == CHANDRABINDU || next == VISARGA)) {
-                    i += 1;
-                    continue;
                 } else {
                     i += 1;
                     continue;
@@ -181,18 +185,22 @@ public class BanglaToBanglishConverter {
             } else if (VOWELS.containsKey(c)) {
                 sb.append(VOWELS.get(c));
                 i += 1;
+            } else if (VOWEL_SIGNS.containsKey(c)) {
+                sb.append(VOWEL_SIGNS.get(c));
+                i += 1;
             } else if (c == ANUSVARA) {
                 sb.append("ng");
                 i += 1;
-            } else if (c == CHANDRABINDU) {
+            } else if (c == CHANDRABINDU || c == HASANT) {
                 i += 1;
             } else if (c == VISARGA) {
                 sb.append("h");
                 i += 1;
-            } else if (c == HASANT) {
-                i += 1;
             } else {
-                sb.append(c);
+                // কোনো বাংলা হরফ যেন না আসতে পারে, কেবল ইংরেজি বা সংখ্যা এলাউ
+                if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+                    sb.append(c);
+                }
                 i += 1;
             }
         }
