@@ -37,6 +37,9 @@ public class VoiceInputHelper {
                         RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "bn-BD");
                 intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+                
+                // লাইভ বা চলমান ফলাফল পাওয়ার জন্য এটি যুক্ত করা হয়েছে
+                intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 
                 speechRecognizer.setRecognitionListener(new RecognitionListener() {
                     @Override
@@ -57,6 +60,7 @@ public class VoiceInputHelper {
                             if (matches != null && !matches.isEmpty()) {
                                 String text = matches.get(0);
                                 if (ime != null) {
+                                    // চূড়ান্ত ফলাফল পাঠানোর জন্য
                                     ime.handleVoiceResult(text);
                                 }
                             } else {
@@ -72,7 +76,22 @@ public class VoiceInputHelper {
                         releaseRecognizer();
                     }
 
-                    @Override public void onPartialResults(Bundle partialResults) {}
+                    @Override
+                    public void onPartialResults(Bundle partialResults) {
+                        // কথা বলার সময় লাইভ টেক্সট প্রিভিউ বক্সে দেখানোর জন্য এটি কাজ করবে
+                        if (partialResults != null) {
+                            ArrayList<String> matches = partialResults.getStringArrayList(
+                                    SpeechRecognizer.RESULTS_RECOGNITION);
+                            if (matches != null && !matches.isEmpty()) {
+                                String partialText = matches.get(0);
+                                if (ime != null) {
+                                    // আপনার BanglishIME ক্লাসে এই লাইভ টেক্সট দেখানোর মেথড থাকতে হবে
+                                    ime.handleVoicePartialResult(partialText);
+                                }
+                            }
+                        }
+                    }
+
                     @Override public void onEvent(int eventType, Bundle params) {}
                 });
 
