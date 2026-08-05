@@ -36,7 +36,7 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
 
         suggestionText = root.findViewById(R.id.preview_text_view);
         Button convertButton = root.findViewById(R.id.btn_convert);
-        Button micButton = root.findViewById(R.id.btn_mic); // ভয়েস বাটন বাইন্ড করা হলো
+        Button micButton = root.findViewById(R.id.btn_mic); // ভয়েস বাটন বাইন্ড করা হলো
         keyboardView = root.findViewById(R.id.keyboard_view);
 
         qwertyKeyboard = new Keyboard(this, R.xml.qwerty);
@@ -70,6 +70,13 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
 
     public void handleVoiceResult(String recognizedBangla) {
         processBanglaText(recognizedBangla, -1);
+    }
+
+    // ভয়েস বলার সময় লাইভ বাংলা প্রিভিউ দেখানোর জন্য এই মেথডটি যোগ করা হয়েছে
+    public void handleVoicePartialResult(String partialText) {
+        if (suggestionText != null && partialText != null) {
+            suggestionText.setText(partialText);
+        }
     }
 
     private void processBanglaText(String banglaText, int banglaLength) {
