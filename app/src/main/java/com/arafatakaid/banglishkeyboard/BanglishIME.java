@@ -33,8 +33,9 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         // ১. ডিকশনারি হেল্পার লোড
         dictionaryHelper = DictionaryHelper.getInstance(this);
 
-        // ২. assets/dictionary.json থেকে পুরো ডিকশনারি মেমোরিতে লোড করা
+        // ২. assets ফোল্ডার থেকে ২টি ডিকশনারি ফাইলই মেমোরিতে লোড করা
         BanglaToBanglishConverter.loadDictionaryFromAssets(this, "dictionary.json");
+        BanglaToBanglishConverter.loadDictionaryFromAssets(this, "words2.json");
     }
 
     @Override
@@ -125,7 +126,7 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
             banglishResult = dictionaryHelper.lookup(cleanText);
         }
 
-        // ২. যদি সেখানে না পায়, তবে dictionary.json ফাইল থেকে সঠিক বাংলিশটি তুলে আনবে
+        // ২. যদি সেখানে না পায়, তবে JSON ফাইলগুলো থেকে সঠিক বাংলিশটি তুলে আনবে
         if (banglishResult == null || banglishResult.isEmpty()) {
             banglishResult = BanglaToBanglishConverter.convert(cleanText);
         }
