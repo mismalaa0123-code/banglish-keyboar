@@ -62,4 +62,12 @@ public class DictionaryHelper {
     public boolean contains(String banglaText) {
         return dictionary.containsKey(banglaText.trim());
     }
+
+    // ডিকশনারিতে মোট কতগুলো শব্দ আছে তা জানার নতুন মেথড
+    public int getWordCount() {
+        if (dictionary != null) {
+            return dictionary.size();
+        }
+        return 0;
+    }
 }
