@@ -32,12 +32,11 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
 
     @Override
     public View onCreateInputView() {
-        // সরাসরি XML লেআউট ইনফ্লেট করা হলো যাতে ক্র্যাশ না করে
         View root = LayoutInflater.from(this).inflate(R.layout.keyboard_view, null);
 
-        // লেআউট থেকে আইডিগুলো বাইন্ড করা হলো
         suggestionText = root.findViewById(R.id.preview_text_view);
         Button convertButton = root.findViewById(R.id.btn_convert);
+        Button micButton = root.findViewById(R.id.btn_mic); // ভয়েস বাটন বাইন্ড করা হলো
         keyboardView = root.findViewById(R.id.keyboard_view);
 
         qwertyKeyboard = new Keyboard(this, R.xml.qwerty);
@@ -46,6 +45,10 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
 
         if (convertButton != null) {
             convertButton.setOnClickListener(v -> convertCurrentText());
+        }
+
+        if (micButton != null) {
+            micButton.setOnClickListener(v -> startVoiceInput());
         }
 
         return root;
@@ -70,13 +73,16 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     }
 
     private void processBanglaText(String banglaText, int banglaLength) {
-        String dictResult = dictionaryHelper.lookup(banglaText);
+        // ডিকশনারি সার্চ নিখুঁত করার জন্য অতিরিক্ত স্পেস ট্রিম করা হলো
+        String cleanText = banglaText != null ? banglaText.trim() : "";
+        
+        String dictResult = dictionaryHelper.lookup(cleanText);
         String banglishResult;
 
-        if (dictResult != null) {
+        if (dictResult != null && !dictResult.isEmpty()) {
             banglishResult = dictResult;
         } else {
-            banglishResult = BanglaToBanglishConverter.convert(banglaText);
+            banglishResult = BanglaToBanglishConverter.convert(cleanText);
         }
 
         commitBanglish(banglishResult, banglaLength);
@@ -91,7 +97,7 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         }
         ic.commitText(banglishText + " ", 1);
         if (suggestionText != null) {
-            suggestionText.setText("Bangla likhun, tarpor Convert chapun");
+            suggestionText.setText("এখানে বাংলা দেখা যাবে...");
         }
     }
 
