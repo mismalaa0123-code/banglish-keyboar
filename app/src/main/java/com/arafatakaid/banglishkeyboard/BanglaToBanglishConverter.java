@@ -17,7 +17,6 @@ public class BanglaToBanglishConverter {
     private static final Map<Character, String> CONSONANTS = new HashMap<>();
     private static final Map<Character, String> VOWELS = new HashMap<>();
     private static final Map<Character, String> VOWEL_SIGNS = new HashMap<>();
-    
     private static final Map<String, String> CUSTOM_DICTIONARY = new HashMap<>();
 
     static {
@@ -31,7 +30,7 @@ public class BanglaToBanglishConverter {
         CONSONANTS.put('\u099B', "chh");
         CONSONANTS.put('\u099C', "j");
         CONSONANTS.put('\u099D', "jh");
-        CONSONANTS.put('\u099E', "ng");
+        CONSONANTS.put('\u099E', "n");
         CONSONANTS.put('\u099F', "t");
         CONSONANTS.put('\u09A0', "th");
         CONSONANTS.put('\u09A1', "d");
@@ -91,7 +90,6 @@ public class BanglaToBanglishConverter {
     private static final char VISARGA = '\u0983';
     private static final char NUKTA = '\u09BC';
 
-    // JSON ডিকশনারি লোড করার মেথড
     public static void loadDictionaryFromAssets(Context context, String fileName) {
         try {
             InputStream is = context.getAssets().open(fileName);
@@ -122,25 +120,42 @@ public class BanglaToBanglishConverter {
         
         String normalizedText = Normalizer.normalize(banglaText.trim(), Normalizer.Form.NFC);
         
-        // ডিকশনারিতে হুবহু বাক্য থাকলে
         if (CUSTOM_DICTIONARY.containsKey(normalizedText)) {
             return CUSTOM_DICTIONARY.get(normalizedText);
         }
 
         StringBuilder result = new StringBuilder();
-        String[] words = normalizedText.split("\\s+");
+        int i = 0;
+        int len = normalizedText.length();
+        StringBuilder wordBuffer = new StringBuilder();
 
-        for (int w = 0; w < words.length; w++) {
-            result.append(convertWord(words[w]));
-            if (w < words.length - 1) result.append(" ");
+        while (i < len) {
+            char c = normalizedText.charAt(i);
+            if (Character.isWhitespace(c) || isPunctuation(c)) {
+                if (wordBuffer.length() > 0) {
+                    result.append(convertWord(wordBuffer.toString()));
+                    wordBuffer.setLength(0);
+                }
+                result.append(c);
+            } else {
+                wordBuffer.append(c);
+            }
+            i++;
         }
+        if (wordBuffer.length() > 0) {
+            result.append(convertWord(wordBuffer.toString()));
+        }
+
         return result.toString();
+    }
+
+    private static boolean isPunctuation(char c) {
+        return "।,\n?!:;()[]{}\"'-".indexOf(c) >= 0;
     }
 
     private static String convertWord(String word) {
         if (word == null || word.isEmpty()) return "";
 
-        // ১. ডিকশনারি চেক (মূল শব্দ এবং নুকতা ক্লিন করা শব্দ)
         String cleanedWord = Normalizer.normalize(word, Normalizer.Form.NFC)
                 .replace("\u09BC", "")
                 .trim();
@@ -152,7 +167,6 @@ public class BanglaToBanglishConverter {
             return CUSTOM_DICTIONARY.get(cleanedWord);
         }
 
-        // ২. অ্যালগরিদম ফিল্টার
         StringBuilder sb = new StringBuilder();
         int i = 0;
         int len = word.length();
@@ -166,21 +180,50 @@ public class BanglaToBanglishConverter {
             }
 
             if (CONSONANTS.containsKey(c)) {
-                sb.append(CONSONANTS.get(c));
+                String mappedConsonant = CONSONANTS.get(c);
+                if (c == '\u09AF') {
+                    if (i == 0) {
+                        mappedConsonant = "j";
+                    } else {
+                        if (i == len - 1) {
+                            mappedConsonant = "y";
+                        } else {
+                            mappedConsonant = "j";
+                        }
+                    }
+                } else if (c == '\u0999' || c == '\u099E') {
+                    if ((i + 1) < len && CONSONANTS.containsKey(word.charAt(i + 1))) {
+                        mappedConsonant = "n";
+                    } else {
+                        mappedConsonant = "ng";
+                    }
+                }
+
+                sb.append(mappedConsonant);
 
                 boolean hasNext = (i + 1) < len;
                 char next = hasNext ? word.charAt(i + 1) : '\0';
 
                 if (hasNext && next == HASANT) {
                     i += 2;
-                    continue;
                 } else if (hasNext && VOWEL_SIGNS.containsKey(next)) {
                     sb.append(VOWEL_SIGNS.get(next));
                     i += 2;
-                    continue;
                 } else {
+                    boolean suppressImplicitO = false;
+                    
+                    if (i == len - 1) {
+                        suppressImplicitO = true;
+                    } else if (hasNext && (next == CHANDRABINDU || next == ANUSVARA || next == VISARGA)) {
+                        if (i + 1 == len - 1) {
+                            suppressImplicitO = true;
+                        }
+                    }
+
+                    if (!suppressImplicitO) {
+                        sb.append("o");
+                    }
                     i += 1;
-                    continue;
                 }
             } else if (VOWELS.containsKey(c)) {
                 sb.append(VOWELS.get(c));
@@ -197,7 +240,6 @@ public class BanglaToBanglishConverter {
                 sb.append("h");
                 i += 1;
             } else {
-                // কোনো বাংলা হরফ যেন না আসতে পারে, কেবল ইংরেজি বা সংখ্যা এলাউ
                 if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
                     sb.append(c);
                 }
