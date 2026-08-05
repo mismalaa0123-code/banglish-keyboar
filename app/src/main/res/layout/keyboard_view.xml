@@ -28,6 +28,16 @@
             android:singleLine="true"
             android:ellipsize="end" />
 
+        <!-- মাইক্রোফোন বাটন -->
+        <Button
+            android:id="@+id/btn_mic"
+            android:layout_width="wrap_content"
+            android:layout_height="35dp"
+            android:text="🎤"
+            android:layout_marginEnd="4dp"
+            android:backgroundTint="#FF9800"
+            android:textSize="14sp" />
+
         <!-- Convert বাটন -->
         <Button
             android:id="@+id/btn_convert"
