@@ -24,16 +24,12 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     private Keyboard qwertyKeyboard;
     private TextView suggestionText;
 
-    private DictionaryHelper dictionaryHelper;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     public void onCreate() {
         super.onCreate();
-        // ১. ডিকশনারি হেল্পার লোড
-        dictionaryHelper = DictionaryHelper.getInstance(this);
-
-        // ২. assets ফোল্ডার থেকে ২টি ডিকশনারি ফাইলই মেমোরিতে লোড করা
+        // assets ফোল্ডার থেকে ২টি ডিকশনারি ফাইলই সরাসরি মেমোরিতে লোড করা হচ্ছে
         BanglaToBanglishConverter.loadDictionaryFromAssets(this, "dictionary.json");
         BanglaToBanglishConverter.loadDictionaryFromAssets(this, "words2.json");
     }
@@ -97,7 +93,6 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         Toast.makeText(this, "Kono Bangla text pawa jayni", Toast.LENGTH_SHORT).show();
     }
 
-    // ১. কথা বলা শেষ হলে ফাইনাল বাংলা টেক্সটটি প্রিভিউ টেক্সটভিউতে দেখাবে
     public void handleVoiceResult(String recognizedBangla) {
         mainHandler.post(() -> {
             if (suggestionText != null && recognizedBangla != null) {
@@ -106,7 +101,6 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         });
     }
 
-    // ২. কথা বলা চলাকালীন লাইভ ফাস্ট প্রিভিউ দেখানোর জন্য (UI Thread Safe)
     public void handleVoicePartialResult(String partialText) {
         mainHandler.post(() -> {
             if (suggestionText != null && partialText != null) {
@@ -119,17 +113,8 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         String cleanText = banglaText != null ? banglaText.trim() : "";
         if (cleanText.isEmpty()) return;
         
-        String banglishResult = null;
-
-        // ১. আগে SQLite DB/DictionaryHelper এ খুঁজবে
-        if (dictionaryHelper != null) {
-            banglishResult = dictionaryHelper.lookup(cleanText);
-        }
-
-        // ২. যদি সেখানে না পায়, তবে JSON ফাইলগুলো থেকে সঠিক বাংলিশটি তুলে আনবে
-        if (banglishResult == null || banglishResult.isEmpty()) {
-            banglishResult = BanglaToBanglishConverter.convert(cleanText);
-        }
+        // সরাসরি আমাদের নিখুঁত JSON ডিকশনারি ও কনভার্টার থেকে আউটপুট নেওয়া হবে
+        String banglishResult = BanglaToBanglishConverter.convert(cleanText);
 
         commitBanglish(banglishResult, banglaLength);
     }
