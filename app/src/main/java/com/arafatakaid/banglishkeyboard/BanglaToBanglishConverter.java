@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.text.Normalizer;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -17,7 +18,6 @@ public class BanglaToBanglishConverter {
     private static final Map<Character, String> VOWELS = new HashMap<>();
     private static final Map<Character, String> VOWEL_SIGNS = new HashMap<>();
     
-    // কাস্টম ডিকশনারি ম্যাপ (যেমন: বাংলা শব্দের বিপরীতে নির্দিষ্ট বাংলিশ রূপ)
     private static final Map<String, String> CUSTOM_DICTIONARY = new HashMap<>();
 
     static {
@@ -54,10 +54,10 @@ public class BanglaToBanglishConverter {
         CONSONANTS.put('\u09B7', "sh");
         CONSONANTS.put('\u09B8', "s");
         CONSONANTS.put('\u09B9', "h");
-        CONSONANTS.put('\u09DC', "r");
-        CONSONANTS.put('\u09DD', "rh");
-        CONSONANTS.put('\u09DF', "y");
-        CONSONANTS.put('\u09CE', "t");
+        CONSONANTS.put('\u09DC', "r");  // ড়
+        CONSONANTS.put('\u09DD', "rh"); // ঢ়
+        CONSONANTS.put('\u09DF', "y");  // য়
+        CONSONANTS.put('\u09CE', "t");  // ৎ
 
         // Shorborno (independent vowels)
         VOWELS.put('\u0985', "o");
@@ -89,8 +89,9 @@ public class BanglaToBanglishConverter {
     private static final char ANUSVARA = '\u0982';
     private static final char CHANDRABINDU = '\u0981';
     private static final char VISARGA = '\u0983';
+    private static final char NUKTA = '\u09BC';
 
-    // assets ফোল্ডার থেকে JSON ডিকশনারি লোড করার মেথড
+    // JSON ডিকশনারি লোড করার উন্নত মেথড
     public static void loadDictionaryFromAssets(Context context, String fileName) {
         try {
             InputStream is = context.getAssets().open(fileName);
@@ -108,7 +109,9 @@ public class BanglaToBanglishConverter {
             while (keys.hasNext()) {
                 String key = keys.next();
                 String value = jsonObject.getString(key);
-                CUSTOM_DICTIONARY.put(key, value);
+                // ইউনিকোড নরমাল করে ডিকশনারিতে ম্যাপ করা হচ্ছে
+                String normalizedKey = Normalizer.normalize(key, Normalizer.Form.NFC).trim();
+                CUSTOM_DICTIONARY.put(normalizedKey, value);
             }
         } catch (IOException | JSONException e) {
             e.printStackTrace();
@@ -118,8 +121,16 @@ public class BanglaToBanglishConverter {
     public static String convert(String banglaText) {
         if (banglaText == null || banglaText.trim().isEmpty()) return "";
         
+        // ১. ইউনিকোড নরমাল করা (যাতে ভেঙে যাওয়া বর্ণগুলো ঠিক হয়ে যায়)
+        String normalizedText = Normalizer.normalize(banglaText.trim(), Normalizer.Form.NFC);
+        
+        // ২. পুরো বাক্যটি হুবহু ডিকশনারিতে থাকলে সরাসরি দিয়ে দেবে
+        if (CUSTOM_DICTIONARY.containsKey(normalizedText)) {
+            return CUSTOM_DICTIONARY.get(normalizedText);
+        }
+
         StringBuilder result = new StringBuilder();
-        String[] words = banglaText.trim().split("\\s+");
+        String[] words = normalizedText.split("\\s+");
 
         for (int w = 0; w < words.length; w++) {
             result.append(convertWord(words[w]));
@@ -129,7 +140,7 @@ public class BanglaToBanglishConverter {
     }
 
     private static String convertWord(String word) {
-        // ১. ডিকশনারিতে আগে চেক করবে
+        // ১. প্রতিটি আলাদা শব্দ ডিকশনারিতে আগে চেক করবে
         if (CUSTOM_DICTIONARY.containsKey(word)) {
             return CUSTOM_DICTIONARY.get(word);
         }
@@ -141,6 +152,12 @@ public class BanglaToBanglishConverter {
         while (i < len) {
             char c = word.charAt(i);
 
+            // কোনো বাড়তি নুকতা থাকলে তা ইগনোর করবে
+            if (c == NUKTA) {
+                i++;
+                continue;
+            }
+
             if (CONSONANTS.containsKey(c)) {
                 sb.append(CONSONANTS.get(c));
 
@@ -148,11 +165,9 @@ public class BanglaToBanglishConverter {
                 char next = hasNext ? word.charAt(i + 1) : '\0';
 
                 if (hasNext && next == HASANT) {
-                    // হসন্ত থাকলে স্বরবর্ণ স্কিপ করবে
                     i += 2;
                     continue;
                 } else if (hasNext && VOWEL_SIGNS.containsKey(next)) {
-                    // 'কার' থাকলে তার ইংরেজি বসাচ্ছে
                     sb.append(VOWEL_SIGNS.get(next));
                     i += 2;
                     continue;
@@ -160,8 +175,6 @@ public class BanglaToBanglishConverter {
                     i += 1;
                     continue;
                 } else {
-                    // **স্মার্ট Schwa লজিক (অনর্থক 'o' রিমুভ)**
-                    // শব্দের শেষের ব্যঞ্জনবর্ণে বা হসন্তযুক্ত জায়গায় কোনো বাড়তি "o" বসবে না
                     i += 1;
                     continue;
                 }
