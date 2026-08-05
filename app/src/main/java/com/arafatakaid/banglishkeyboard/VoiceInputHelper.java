@@ -27,18 +27,19 @@ public class VoiceInputHelper {
                     return;
                 }
 
-                // আগের কোনো সেশন চালু থাকলে তা রিলিজ করা
+                // ১. আগের যেকোনো একটিভ রিকগনাইজার সঙ্গে সঙ্গে রিলিজ করা
                 if (speechRecognizer != null) {
                     try {
+                        speechRecognizer.stopListening();
                         speechRecognizer.destroy();
                     } catch (Exception ignored) {}
                     speechRecognizer = null;
                 }
 
-                // ১. স্পিচ রিকগনাইজার তৈরি
-                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context);
+                // ২. Context.getApplicationContext() ব্যবহার নিরাপদ সার্ভিস বাইন্ডিং নিশ্চিত করে
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context.getApplicationContext());
 
-                // ২. লিসনার সেট করা (শুরু করার আগে অবশ্যই লিসনার দিতে হবে)
+                // ৩. লিসনার সেটআপ
                 speechRecognizer.setRecognitionListener(new RecognitionListener() {
                     @Override
                     public void onReadyForSpeech(Bundle params) {
@@ -53,8 +54,9 @@ public class VoiceInputHelper {
                     @Override
                     public void onError(int error) {
                         mainHandler.post(() -> {
+                            // ৭ নম্বর এরর (ERROR_NO_MATCH) চুপচাপ ইগনোর করা
                             if (error != SpeechRecognizer.ERROR_NO_MATCH) {
-                                Toast.makeText(context, "Voice error: " + error, Toast.LENGTH_SHORT).show();
+                                Toast.makeText(context, "Voice error code: " + error, Toast.LENGTH_SHORT).show();
                             }
                         });
                         releaseRecognizer();
@@ -81,7 +83,7 @@ public class VoiceInputHelper {
                             if (matches != null && !matches.isEmpty()) {
                                 String partialText = matches.get(0);
                                 if (ime != null) {
-                                    // লাইভ বাংলা টেক্সট প্রিভিউ বারে পাঠাবে
+                                    // লাইভ প্রিভিউ দেখানোর জন্য
                                     ime.handleVoicePartialResult(partialText);
                                 }
                             }
@@ -91,15 +93,16 @@ public class VoiceInputHelper {
                     @Override public void onEvent(int eventType, Bundle params) {}
                 });
 
-                // ৩. ইনটেন্ট কনফিগারেশন
+                // ৪. ইনটেন্ট কনফিগারেশন
                 Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
                 intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "bn-BD");
+                intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "bn-BD");
                 intent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.getPackageName());
                 intent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
                 intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 
-                // ৪. লিসনিং শুরু করা
+                // ৫. রিকগনিশন শুরু
                 speechRecognizer.startListening(intent);
 
             } catch (Exception e) {
