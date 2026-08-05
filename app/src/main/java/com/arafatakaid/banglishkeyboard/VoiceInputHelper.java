@@ -72,7 +72,10 @@ public class VoiceInputHelper {
 
                     @Override
                     public void onError(int error) {
-                        Toast.makeText(context, "Voice error code: " + error, Toast.LENGTH_SHORT).show();
+                        // ৭ নম্বর এরর (ERROR_NO_MATCH) অথবা স্পিচ সাইলেন্ট থাকলে শান্তভাবে হ্যান্ডেল করা
+                        if (error != SpeechRecognizer.ERROR_NO_MATCH) {
+                            Toast.makeText(context, "Voice error code: " + error, Toast.LENGTH_SHORT).show();
+                        }
                         releaseRecognizer();
                     }
 
@@ -108,6 +111,7 @@ public class VoiceInputHelper {
         new Handler(Looper.getMainLooper()).post(() -> {
             if (speechRecognizer != null) {
                 try {
+                    speechRecognizer.stopListening();
                     speechRecognizer.destroy();
                 } catch (Exception ignored) {}
                 speechRecognizer = null;
