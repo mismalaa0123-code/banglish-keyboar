@@ -29,9 +29,8 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     @Override
     public void onCreate() {
         super.onCreate();
-        // assets ফোল্ডার থেকে ২টি ডিকশনারি ফাইলই সরাসরি মেমোরিতে লোড করা হচ্ছে
-        BanglaToBanglishConverter.loadDictionaryFromAssets(this, "dictionary.json");
-        BanglaToBanglishConverter.loadDictionaryFromAssets(this, "words2.json");
+        // DictionaryHelper ক্লাসের মাধ্যমে ডিকশনারি মেমোরিতে লোড করা হচ্ছে
+        DictionaryHelper.getInstance(this);
     }
 
     @Override
@@ -113,8 +112,13 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         String cleanText = banglaText != null ? banglaText.trim() : "";
         if (cleanText.isEmpty()) return;
         
-        // সরাসরি আমাদের নিখুঁত JSON ডিকশনারি ও কনভার্টার থেকে আউটপুট নেওয়া হবে
-        String banglishResult = BanglaToBanglishConverter.convert(cleanText);
+        // ১. প্রথমে ডিকশনারি (dictionary.json) থেকে শব্দটি চেক করা হচ্ছে
+        String banglishResult = DictionaryHelper.getInstance(this).lookup(cleanText);
+
+        // ২. ডিকশনারিতে না পাওয়া গেলে কনভার্টার দিয়ে রুলস অনুযায়ী পরিবর্তন করা হচ্ছে
+        if (banglishResult == null || banglishResult.trim().isEmpty()) {
+            banglishResult = BanglaToBanglishConverter.convert(cleanText);
+        }
 
         commitBanglish(banglishResult, banglaLength);
     }
