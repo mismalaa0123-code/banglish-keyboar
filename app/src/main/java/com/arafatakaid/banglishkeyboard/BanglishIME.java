@@ -11,8 +11,14 @@ import android.view.inputmethod.InputConnection;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.util.Log;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class BanglishIME extends InputMethodService implements KeyboardView.OnKeyboardActionListener {
+
+    private static final String TAG = "BanglishIME";
 
     private static final int KEYCODE_MIC = -100;
     private static final int KEYCODE_DELETE = -5;
@@ -30,7 +36,14 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     public void onCreate() {
         super.onCreate();
         // DictionaryHelper ক্লাসের মাধ্যমে ডিকশনারি মেমোরিতে লোড করা হচ্ছে
-        DictionaryHelper.getInstance(this);
+        DictionaryHelper dh = DictionaryHelper.getInstance(this);
+        // Debug: লোড হওয়া এন্ট্রির সংখ্যা লোগ করা
+        try {
+            int count = dh.getWordCount();
+            Log.d(TAG, "Dictionary loaded entries: " + count);
+        } catch (Exception e) {
+            Log.d(TAG, "Dictionary check error: " + e.getMessage());
+        }
     }
 
     @Override
@@ -67,20 +80,41 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         return root;
     }
 
+    /**
+     * Extract the last contiguous Bangla token from the given text.
+     * Returns empty string if none found.
+     */
+    private static String extractLastBanglaToken(String text) {
+        if (text == null || text.isEmpty()) return "";
+        Pattern p = Pattern.compile("[\\u0980-\\u09FF]+");
+        Matcher m = p.matcher(text);
+        String last = "";
+        while (m.find()) {
+            last = m.group();
+        }
+        return last != null ? last : "";
+    }
+
     private void convertCurrentText() {
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
 
-        // প্রথমে কার্সরের আগের টেক্সট থেকে চেক করবে
+        // প্রথমে কার্সরের আগের টেক্সট থেকে চেক করবে (সর্বোচ্চ 200 অক্ষর)
         CharSequence before = ic.getTextBeforeCursor(200, 0);
         if (before != null && before.length() > 0) {
-            String banglaText = before.toString().trim();
-            int banglaLength = before.length();
-            processBanglaText(banglaText, banglaLength);
-            return;
+            String fullBefore = before.toString();
+            String lastToken = extractLastBanglaToken(fullBefore);
+            if (lastToken != null && !lastToken.isEmpty()) {
+                // শুধু শেষ বাংলা শব্দটাকেই প্রক্রিয়া কর এবং তার দৈর্ঘ্য সরবরাহ কর
+                processBanglaText(lastToken, lastToken.length());
+                return;
+            } else {
+                Toast.makeText(this, "কোনো বাংলা শব্দ পাওয়া যায়নি কার্সরের আগে", Toast.LENGTH_SHORT).show();
+                return;
+            }
         }
 
-        // যদি কার্সরে না থাকে, কিন্তু প্রিভিউ বারে ভয়েস টেক্সট থেকে থাকে
+        // যদি কার্সরে কিছু না থাকে, কিন্তু প্রিভিউ বারে ভয়েস টেক্সট থেকে থাকে
         if (suggestionText != null) {
             String voiceText = suggestionText.getText().toString().trim();
             if (!voiceText.isEmpty() && !voiceText.contains("Listening") && !voiceText.contains("এখানে বাংলা")) {
@@ -111,24 +145,31 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
     private void processBanglaText(String banglaText, int banglaLength) {
         String cleanText = banglaText != null ? banglaText.trim() : "";
         if (cleanText.isEmpty()) return;
-        
+
         // ১. প্রথমে ডিকশনারি (dictionary.json) থেকে শব্দটি চেক করা হচ্ছে
         String banglishResult = DictionaryHelper.getInstance(this).lookup(cleanText);
+        Log.d(TAG, "Lookup for '" + cleanText + "' -> " + (banglishResult != null ? banglishResult : "null"));
 
         // ২. ডিকশনারিতে না পাওয়া গেলে কনভার্টার দিয়ে রুলস অনুযায়ী পরিবর্তন করা হচ্ছে
         if (banglishResult == null || banglishResult.trim().isEmpty()) {
             banglishResult = BanglaToBanglishConverter.convert(cleanText);
+            Log.d(TAG, "Converted via rules: '" + cleanText + "' -> '" + banglishResult + "'");
         }
 
         commitBanglish(banglishResult, banglaLength);
     }
 
     private void commitBanglish(String banglishText, int banglaLength) {
+        if (banglishText == null) return;
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
 
         if (banglaLength > 0) {
-            ic.deleteSurroundingText(banglaLength, 0);
+            try {
+                ic.deleteSurroundingText(banglaLength, 0);
+            } catch (Exception e) {
+                Log.w(TAG, "deleteSurroundingText failed: " + e.getMessage());
+            }
         }
         ic.commitText(banglishText + " ", 1);
         if (suggestionText != null) {
