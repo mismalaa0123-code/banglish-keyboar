@@ -500,544 +500,196 @@ public class BanglaToBanglishConverter {
         }
 
         if (lastIndex < cleanInput.length()) {
-            String remainingText = cleanInput.substring(lastIndex);
-            finalResult.append(processSentence(remainingText));
+            String normalText = cleanInput.substring(lastIndex);
+            finalResult.append(processSentence(normalText));
         }
 
         return finalResult.toString();
     }
 
     private static String processSentence(String text) {
-        StringBuilder result = new StringBuilder();
-        StringBuilder wordBuffer = new StringBuilder();
-        int len = text.length();
+        if (text == null || text.isEmpty()) return "";
 
-        for (int i = 0; i < len; i++) {
+        if (TRANS_CACHE.containsKey(text)) {
+            return TRANS_CACHE.get(text);
+        }
+
+        StringBuilder sb = new StringBuilder();
+        StringBuilder wordBuffer = new StringBuilder();
+
+        for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
 
-            if (Character.isWhitespace(c) || isPunctuation(c)) {
+            if (isBanglaChar(c) || isBanglaDigit(c)) {
+                wordBuffer.append(c);
+            } else {
                 if (wordBuffer.length() > 0) {
-                    result.append(convertWord(wordBuffer.toString()));
+                    sb.append(processWord(wordBuffer.toString()));
                     wordBuffer.setLength(0);
                 }
-                result.append(c);
-            } else {
-                wordBuffer.append(c);
+                sb.append(c);
             }
         }
 
         if (wordBuffer.length() > 0) {
-            result.append(convertWord(wordBuffer.toString()));
+            sb.append(processWord(wordBuffer.toString()));
         }
 
-        return result.toString();
+        String result = sb.toString();
+        TRANS_CACHE.put(text, result);
+        return result;
     }
 
-    public static String convertWord(String word) {
+    private static String processWord(String word) {
         if (word == null || word.isEmpty()) return "";
 
-        String normalizedWord = cleanUnicode(Normalizer.normalize(word, Normalizer.Form.NFC)).trim();
+        String dictVal = lookupDictionary(word);
+        if (dictVal != null) return dictVal;
 
-        String cached = TRANS_CACHE.get(normalizedWord);
-        if (cached != null) {
-            return cached;
-        }
+        String expVal = EXCEPTION_DICTIONARY.get(word);
+        if (expVal != null) return expVal;
 
-        String dictMatch = lookupDictionary(normalizedWord);
-        if (dictMatch != null) {
-            TRANS_CACHE.put(normalizedWord, dictMatch);
-            return dictMatch;
-        }
-
-        if (!containsBangla(normalizedWord)) {
-            String digitConverted = convertDigitsIfEnabled(normalizedWord);
-            TRANS_CACHE.put(normalizedWord, digitConverted);
-            return digitConverted;
-        }
-
-        String affixesResult = applyAffixes(normalizedWord);
-        if (affixesResult != null) {
-            TRANS_CACHE.put(normalizedWord, affixesResult);
-            return affixesResult;
-        }
-
-        String converted = runPhoneticEngine(normalizedWord);
-        TRANS_CACHE.put(normalizedWord, converted);
-        return converted;
-    }
-
-    private static String applyAffixes(String word) {
         for (Map.Entry<String, String> entry : SUFFIXES.entrySet()) {
             String suffix = entry.getKey();
             if (word.endsWith(suffix) && word.length() > suffix.length()) {
                 String root = word.substring(0, word.length() - suffix.length());
-                String convertedRoot = convertWord(root);
-                return convertedRoot + entry.getValue();
+                String rootTrans = processWord(root);
+                return rootTrans + entry.getValue();
             }
         }
 
         for (Map.Entry<String, String> entry : PREFIXES.entrySet()) {
             String prefix = entry.getKey();
             if (word.startsWith(prefix) && word.length() > prefix.length()) {
-                String root = word.substring(prefix.length());
-                String convertedRoot = convertWord(root);
-                return entry.getValue() + convertedRoot;
+                String rest = word.substring(prefix.length());
+                String restTrans = processWord(rest);
+                return entry.getValue() + restTrans;
             }
         }
 
-        return null;
+        return transliteratePhonetic(word);
     }
 
-    private static String runPhoneticEngine(String word) {
+    private static String transliteratePhonetic(String word) {
         StringBuilder sb = new StringBuilder();
         int len = word.length();
-        int i = 0;
 
-        Map<Character, String> consonantMap = getActiveConsonants();
-        Map<Character, String> vowelMap = getActiveVowels();
-        Map<Character, String> vowelSignMap = getActiveVowelSigns();
+        Map<Character, String> vowels = currentStyle == Style.ACADEMIC ? VOWELS_ACADEMIC :
+                (currentStyle == Style.SIMPLE ? VOWELS_SIMPLE : VOWELS_NATURAL);
 
-        while (i < len) {
+        Map<Character, String> vowelSigns = currentStyle == Style.ACADEMIC ? VOWEL_SIGNS_ACADEMIC :
+                (currentStyle == Style.SIMPLE ? VOWEL_SIGNS_SIMPLE : VOWEL_SIGNS_NATURAL);
+
+        Map<Character, String> consonants = currentStyle == Style.ACADEMIC ? CONSONANTS_ACADEMIC :
+                (currentStyle == Style.SIMPLE ? CONSONANTS_SIMPLE : CONSONANTS_NATURAL);
+
+        for (int i = 0; i < len; i++) {
             char c = word.charAt(i);
 
-            if (convertDigitsToEnglish && BANGLA_DIGITS.containsKey(c)) {
-                sb.append(BANGLA_DIGITS.get(c));
-                i++;
-                continue;
-            }
-
-            if (c == NUKTA) {
-                i++;
-                continue;
-            }
-
-            if (!isBanglaChar(c)) {
-                sb.append(c);
-                i++;
-                continue;
-            }
-
-            if (c == '\u09B0' && (i + 1 < len) && word.charAt(i + 1) == HASANT && (i + 2 < len)) {
-                sb.append("r");
-                i += 2;
-                continue;
-            }
-
-            if (CONSONANTS_NATURAL.containsKey(c) && (i + 2 < len) && word.charAt(i + 1) == HASANT && word.charAt(i + 2) == '\u09B0') {
-                sb.append(consonantMap.get(c)).append("r");
-                i += 3;
-                if (i < len && vowelSignMap.containsKey(word.charAt(i))) {
-                    sb.append(vowelSignMap.get(word.charAt(i)));
-                    i++;
-                } else if (shouldAppendImplicitO(word, i - 1)) {
-                    sb.append("o");
+            if (isBanglaDigit(c)) {
+                if (convertDigitsToEnglish) {
+                    sb.append(BANGLA_DIGITS.get(c));
+                } else {
+                    sb.append(c);
                 }
                 continue;
             }
 
-            if (c == CHANDRABINDU) {
-                sb.append("n");
-                i++;
+            if (i + 2 < len) {
+                String sub = word.substring(i, i + 3);
+                if (JOINT_LETTERS.containsKey(sub)) {
+                    sb.append(JOINT_LETTERS.get(sub));
+                    i += 2;
+                    continue;
+                }
+            }
+
+            if (i + 1 < len) {
+                String sub = word.substring(i, i + 2);
+                if (JOINT_LETTERS.containsKey(sub)) {
+                    sb.append(JOINT_LETTERS.get(sub));
+                    i += 1;
+                    continue;
+                }
+            }
+
+            if (vowels.containsKey(c)) {
+                sb.append(vowels.get(c));
+                continue;
+            }
+
+            if (consonants.containsKey(c)) {
+                sb.append(consonants.get(c));
+
+                boolean hasFollowingVowelSign = false;
+                boolean hasHasant = false;
+
+                if (i + 1 < len) {
+                    char next = word.charAt(i + 1);
+                    if (vowelSigns.containsKey(next)) {
+                        sb.append(vowelSigns.get(next));
+                        hasFollowingVowelSign = true;
+                        i++;
+                    } else if (next == HASANT) {
+                        hasHasant = true;
+                        i++;
+                    }
+                }
+
+                if (!hasFollowingVowelSign && !hasHasant) {
+                    if (i == len - 1) {
+                        if (currentStyle == Style.ACADEMIC) {
+                            sb.append("a");
+                        }
+                    } else {
+                        char next = word.charAt(i + 1);
+                        if (consonants.containsKey(next) || vowels.containsKey(next)) {
+                            sb.append("o");
+                        }
+                    }
+                }
                 continue;
             }
 
             if (c == ANUSVARA) {
-                if (i + 1 < len) {
-                    char next = word.charAt(i + 1);
-                    if (next == '\u0995' || next == '\u0996') {
-                        sb.append("n");
-                    } else if (next == '\u0997' || next == '\u0998') {
-                        sb.append("ng");
-                    } else if (next == '\u09AF' || next == '\u09DF') {
-                        sb.append("ng");
-                    } else {
-                        sb.append("ng");
-                    }
-                } else {
-                    sb.append("ng");
-                }
-                i++;
-                continue;
-            }
-
-            if (c == '\u0995' && (i + 2 < len) && word.charAt(i + 1) == HASANT && word.charAt(i + 2) == '\u09B7') {
-                if (i == 0) {
-                    sb.append("kh");
-                } else {
-                    sb.append("kkh");
-                }
-                i += 3;
-                continue;
-            }
-
-            if (c == '\u099C' && (i + 2 < len) && word.charAt(i + 1) == HASANT && word.charAt(i + 2) == '\u099E') {
-                if (i == 0) {
-                    sb.append("gya");
-                } else {
-                    sb.append("gga");
-                }
-                i += 3;
-                continue;
-            }
-
-            if (c == '\u099E') {
-                if (i + 2 < len && word.charAt(i + 1) == HASANT) {
-                    char nextConsonant = word.charAt(i + 2);
-                    if (nextConsonant == '\u099A') {
-                        sb.append("nch");
-                        i += 3;
-                        continue;
-                    } else if (nextConsonant == '\u099B') {
-                        sb.append("nchh");
-                        i += 3;
-                        continue;
-                    } else if (nextConsonant == '\u099C') {
-                        sb.append("nj");
-                        i += 3;
-                        continue;
-                    } else if (nextConsonant == '\u099D') {
-                        sb.append("njh");
-                        i += 3;
-                        continue;
-                    }
-                }
-                sb.append("ny");
-                i++;
-                continue;
-            }
-
-            int jointLength = matchJointLetter(word, i, sb);
-            if (jointLength > 0) {
-                i += jointLength;
-                continue;
-            }
-
-            int falaLength = matchFala(word, i, sb);
-            if (falaLength > 0) {
-                i += falaLength;
-                continue;
-            }
-
-            if (consonantMap.containsKey(c)) {
-                String mapped = consonantMap.get(c);
-
-                if (c == '\u09AF') {
-                    mapped = (i == 0) ? "j" : "y";
-                } else if (c == '\u09DF') {
-                    mapped = "y";
-                }
-
-                sb.append(mapped);
-
-                boolean hasNext = (i + 1) < len;
-                char next = hasNext ? word.charAt(i + 1) : '\0';
-
-                if (hasNext && next == HASANT) {
-                    i += 2;
-                } else if (hasNext && vowelSignMap.containsKey(next)) {
-                    sb.append(vowelSignMap.get(next));
-                    i += 2;
-                } else {
-                    if (shouldAppendImplicitO(word, i)) {
-                        sb.append("o");
-                    }
-                    i++;
-                }
-                continue;
-            }
-
-            if (vowelsMapContainsKey(c, vowelMap)) {
-                sb.append(vowelMap.get(c));
-                i++;
-                continue;
-            }
-
-            if (vowelSignMap.containsKey(c)) {
-                sb.append(vowelSignMap.get(c));
-                i++;
-                continue;
-            }
-
-            if (c == VISARGA) {
+                sb.append("ng");
+            } else if (c == CHANDRABINDU) {
+                sb.append("n");
+            } else if (c == VISARGA) {
                 sb.append("h");
+            } else if (c != HASANT && c != NUKTA && c != ZWJ && c != ZWNJ) {
+                sb.append(c);
             }
-            i++;
         }
 
         return sb.toString();
     }
 
-    private static boolean vowelsMapContainsKey(char c, Map<Character, String> vowelMap) {
-        return vowelMap.containsKey(c);
-    }
-
-    private static boolean shouldAppendImplicitO(String word, int index) {
-        int len = word.length();
-        if (index >= len - 1) return false;
-
-        char current = word.charAt(index);
-        char next = word.charAt(index + 1);
-
-        if (next == CHANDRABINDU || next == ANUSVARA || next == VISARGA || next == HASANT) {
-            return false;
-        }
-
-        if (len == 3 && index == 0) {
-            boolean c2 = CONSONANTS_NATURAL.containsKey(word.charAt(1));
-            boolean c3 = CONSONANTS_NATURAL.containsKey(word.charAt(2));
-            if (c2 && c3) {
-                return true;
-            }
-        }
-
-        if (index + 2 < len && CONSONANTS_NATURAL.containsKey(next) && VOWEL_SIGNS_NATURAL.containsKey(word.charAt(index + 2))) {
-            return false;
-        }
-
-        return false;
-    }
-
-    private static String lookupDictionary(String text) {
+    private static String lookupDictionary(String word) {
         DICTIONARY_LOCK.readLock().lock();
         try {
-            if (CUSTOM_DICTIONARY.containsKey(text)) {
-                return CUSTOM_DICTIONARY.get(text);
-            }
-            if (EXCEPTION_DICTIONARY.containsKey(text)) {
-                return EXCEPTION_DICTIONARY.get(text);
-            }
-            return null;
+            return CUSTOM_DICTIONARY.get(word);
         } finally {
             DICTIONARY_LOCK.readLock().unlock();
         }
-    }
-
-    private static Map<Character, String> getActiveConsonants() {
-        switch (currentStyle) {
-            case SIMPLE: return CONSONANTS_SIMPLE;
-            case ACADEMIC: return CONSONANTS_ACADEMIC;
-            case NATURAL:
-            default: return CONSONANTS_NATURAL;
-        }
-    }
-
-    private static Map<Character, String> getActiveVowels() {
-        switch (currentStyle) {
-            case ACADEMIC: return VOWELS_ACADEMIC;
-            case SIMPLE: return VOWELS_SIMPLE;
-            case NATURAL:
-            default: return VOWELS_NATURAL;
-        }
-    }
-
-    private static Map<Character, String> getActiveVowelSigns() {
-        switch (currentStyle) {
-            case ACADEMIC: return VOWEL_SIGNS_ACADEMIC;
-            case SIMPLE: return VOWEL_SIGNS_SIMPLE;
-            case NATURAL:
-            default: return VOWEL_SIGNS_NATURAL;
-        }
-    }
-
-    private static String cleanUnicode(String str) {
-        if (str == null) return "";
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < str.length(); i++) {
-            char c = str.charAt(i);
-            if (c != ZWJ && c != ZWNJ && !(c >= '\uFE00' && c <= '\uFE0F')) {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
-    }
-
-    private static String convertDigitsIfEnabled(String token) {
-        if (!convertDigitsToEnglish) return token;
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < token.length(); i++) {
-            char c = token.charAt(i);
-            if (BANGLA_DIGITS.containsKey(c)) {
-                sb.append(BANGLA_DIGITS.get(c));
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
-    }
-
-    private static int matchJointLetter(String word, int index, StringBuilder sb) {
-        int maxLen = Math.min(5, word.length() - index);
-        Map<Character, String> vowelSignMap = getActiveVowelSigns();
-
-        for (int l = maxLen; l >= 2; l--) {
-            String sub = word.substring(index, index + l);
-            if (JOINT_LETTERS.containsKey(sub)) {
-                sb.append(JOINT_LETTERS.get(sub));
-
-                if (index + l < word.length() && vowelSignMap.containsKey(word.charAt(index + l))) {
-                    sb.append(vowelSignMap.get(word.charAt(index + l)));
-                    return l + 1;
-                }
-                return l;
-            }
-        }
-        return 0;
-    }
-
-    private static int matchFala(String word, int index, StringBuilder sb) {
-        int len = word.length();
-        Map<Character, String> consonantMap = getActiveConsonants();
-        Map<Character, String> vowelSignMap = getActiveVowelSigns();
-
-        if (index + 2 < len && word.charAt(index + 1) == HASANT) {
-            char baseChar = word.charAt(index);
-            char falaChar = word.charAt(index + 2);
-
-            if (consonantMap.containsKey(baseChar)) {
-                String baseMapped = consonantMap.get(baseChar);
-
-                if (falaChar == '\u09AF') {
-                    sb.append(baseMapped);
-                    if (index + 3 < len && vowelSignMap.containsKey(word.charAt(index + 3))) {
-                        sb.append(vowelSignMap.get(word.charAt(index + 3)));
-                        return 4;
-                    }
-                    sb.append("ya");
-                    return 3;
-                }
-
-                if (falaChar == '\u09B0') {
-                    sb.append(baseMapped).append("r");
-                    if (index + 3 < len && vowelSignMap.containsKey(word.charAt(index + 3))) {
-                        sb.append(vowelSignMap.get(word.charAt(index + 3)));
-                        return 4;
-                    }
-                    return 3;
-                }
-
-                if (falaChar == '\u09AC' || falaChar == '\u09AE') {
-                    sb.append(baseMapped);
-                    if (index + 3 < len && vowelSignMap.containsKey(word.charAt(index + 3))) {
-                        sb.append(vowelSignMap.get(word.charAt(index + 3)));
-                        return 4;
-                    }
-                    return 3;
-                }
-
-                if (falaChar == '\u09B2') {
-                    sb.append(baseMapped).append("l");
-                    if (index + 3 < len && vowelSignMap.containsKey(word.charAt(index + 3))) {
-                        sb.append(vowelSignMap.get(word.charAt(index + 3)));
-                        return 4;
-                    }
-                    return 3;
-                }
-            }
-        }
-        return 0;
-    }
-
-    private static boolean isPunctuation(char c) {
-        return "।,\n\r?!:;()[]{}\"'-_@#$%^&*+=/\\|<>".indexOf(c) >= 0;
     }
 
     private static boolean isBanglaChar(char c) {
         return c >= '\u0980' && c <= '\u09FF';
     }
 
-    private static boolean containsBangla(String str) {
-        for (int i = 0; i < str.length(); i++) {
-            char c = str.charAt(i);
-            if (isBanglaChar(c) || BANGLA_DIGITS.containsKey(c)) {
-                return true;
-            }
-        }
-        return false;
+    private static boolean isBanglaDigit(char c) {
+        return BANGLA_DIGITS.containsKey(c);
+    }
+
+    private static String cleanUnicode(String text) {
+        if (text == null) return "";
+        return text.replace("\u200B", "").replace("\uFEFF", "");
     }
 
     private static void logDebug(String message) {
         if (debugLoggingEnabled) {
             Log.d(TAG, message);
         }
-    }
-
-    public static long runBenchmark(int iterations) {
-        String[] sampleWords = {
-            "আমি", "তুমি", "বাংলা", "শিক্ষা", "বিজ্ঞান", "কর্ম", "ধর্ম", "প্রকৃতি",
-            "https://example.com", "user@mail.com", "১২৩৪৫", "রাষ্ট্র"
-        };
-
-        logDebug("Starting Benchmark with " + iterations + " iterations...");
-        clearCache();
-
-        long startTime = System.currentTimeMillis();
-        for (int i = 0; i < iterations; i++) {
-            String word = sampleWords[i % sampleWords.length];
-            convertWord(word);
-        }
-        long endTime = System.currentTimeMillis();
-        long duration = endTime - startTime;
-
-        double opsPerSec = (iterations / (double) duration) * 1000.0;
-        Log.i(TAG, "Benchmark Completed: " + iterations + " words converted in " + duration + " ms. Throughput: " + String.format("%.2f", opsPerSec) + " ops/sec");
-
-        return duration;
-    }
-
-    public static boolean runTestSuite() {
-        Map<String, String> testCases = new HashMap<>();
-
-        testCases.put("আমি", "ami");
-        testCases.put("তুমি", "tumi");
-        testCases.put("বাংলা", "bangla");
-        testCases.put("শিক্ষা", "shikkha");
-        testCases.put("রক্ষা", "rokkha");
-        testCases.put("লক্ষ্য", "lokkho");
-        testCases.put("কক্ষ", "kokkho");
-        testCases.put("বিজ্ঞান", "biggan");
-        testCases.put("অজ্ঞ", "oggo");
-        testCases.put("জ্ঞান", "gyan");
-        testCases.put("কর্ম", "kormo");
-        testCases.put("ধর্ম", "dhormo");
-        testCases.put("গ্রাম", "gram");
-        testCases.put("রাষ্ট্র", "rashtro");
-        testCases.put("প্রকৃতি", "prokriti");
-        testCases.put("সংগীত", "sangeet");
-        testCases.put("সংখ্যা", "shonkha");
-        testCases.put("সংযোগ", "shongjog");
-        testCases.put("অঙ্ক", "onko");
-        testCases.put("অঙ্গ", "ongo");
-
-        testCases.put("https://google.com", "https://google.com");
-        testCases.put("admin@test.com", "admin@test.com");
-        testCases.put("@arafat", "@arafat");
-        testCases.put("#Bangladesh", "#Bangladesh");
-        testCases.put("😊", "😊");
-
-        int passed = 0;
-        int failed = 0;
-
-        for (Map.Entry<String, String> test : testCases.entrySet()) {
-            String result = convert(test.getKey());
-            if (result.equals(test.getValue())) {
-                passed++;
-            } else {
-                failed++;
-                Log.e(TAG, "Test Failed for [" + test.getKey() + "]: Expected '" + test.getValue() + "', Got '" + result + "'");
-            }
-        }
-
-        for (int i = 0; i < 975; i++) {
-            String input = "বাংলা" + i;
-            String res = convert(input);
-            if (res != null && !res.isEmpty()) {
-                passed++;
-            } else {
-                failed++;
-            }
-        }
-
-        Log.i(TAG, "Test Suite Execution Completed: Passed=" + passed + ", Failed=" + failed);
-        return failed == 0;
     }
 }
