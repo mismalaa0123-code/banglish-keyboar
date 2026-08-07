@@ -26,285 +26,123 @@ import java.util.regex.Matcher;
 /**
  * =====================================================
  * BanglaToBanglishConverter
- * Version : 3.0
+ * Version : 3.1 (Fixed & Completed)
  * Author  : Arafat Akaid
  * =====================================================
- *
- * Features
- * ----------
- * ✔ Rule Based
- * ✔ Dictionary Based
- * ✔ Exception Dictionary
- * ✔ Prefix Rules
- * ✔ Suffix Rules
- * ✔ Joint Letter Rules
- * ✔ Unicode Normalize
- * ✔ LRU Cache
- * ✔ Thread Safe
- * ✔ Future AI Support
- *
  */
 
 public final class BanglaToBanglishConverter {
 
     private BanglaToBanglishConverter(){}
 
-    private static final String TAG =
-            "BanglaToBanglish";
-
-    /*
-     * =============================
-     * STYLE
-     * =============================
-     */
+    private static final String TAG = "BanglaToBanglish";
 
     public enum Style{
-
         NATURAL,
-
         SIMPLE,
-
         ACADEMIC
-
     }
 
-    private static volatile Style currentStyle =
-            Style.NATURAL;
+    private static volatile Style currentStyle = Style.NATURAL;
 
-    /*
-     * =============================
-     * SETTINGS
-     * =============================
-     */
+    private static boolean convertDigits = true;
+    private static boolean debugMode = false;
 
-    private static boolean
-            convertDigits = true;
-
-    private static boolean
-            debugMode = false;
-
-    /*
-     * =============================
-     * CACHE
-     * =============================
-     */
-
-    private static final int
-            CACHE_SIZE = 10000;
+    private static final int CACHE_SIZE = 10000;
 
     private static final Map<String,String> CACHE =
             Collections.synchronizedMap(
-
-                    new LinkedHashMap<String,String>(
-                            1024,
-                            0.75f,
-                            true){
-
+                    new LinkedHashMap<String,String>(1024, 0.75f, true){
                         @Override
-                        protected boolean removeEldestEntry(
-                                Map.Entry<String,String> eldest){
-
-                            return size()>CACHE_SIZE;
-
+                        protected boolean removeEldestEntry(Map.Entry<String,String> eldest){
+                            return size() > CACHE_SIZE;
                         }
-
                     });
 
-    /*
-     * =============================
-     * DICTIONARY
-     * =============================
-     */
+    private static final Map<String,String> DICTIONARY = new ConcurrentHashMap<>(65536);
+    private static final Map<String,String> EXCEPTION = new ConcurrentHashMap<>(4096);
 
-    private static final Map<String,String>
-            DICTIONARY =
-            new ConcurrentHashMap<>(65536);
+    private static final Map<Character,String> CONSONANTS = new HashMap<>();
+    private static final Map<Character,String> VOWELS = new HashMap<>();
+    private static final Map<Character,String> VOWEL_SIGNS = new HashMap<>();
+    private static final Map<Character,Character> DIGITS = new HashMap<>();
 
-    private static final Map<String,String>
-            EXCEPTION =
-            new ConcurrentHashMap<>(4096);
+    private static final Map<String,String> JOINT = new HashMap<>();
+    private static final Map<String,String> PREFIX = new HashMap<>();
+    private static final Map<String,String> SUFFIX = new HashMap<>();
 
-    /*
-     * =============================
-     * CHARACTER MAP
-     * =============================
-     */
+    private static final char HASANTA = '্';
+    private static final char ANUSWAR = 'ং';
+    private static final char CHANDRA = 'ঁ';
+    private static final char VISARGA = 'ঃ';
+    private static final char NUKTA = '়';
 
-    private static final Map<Character,String>
-            CONSONANTS =
-            new HashMap<>();
+    private static final Pattern PRESERVE_PATTERN = Pattern.compile(
+            "(https?://\\S+)"
+                    + "|(www\\.\\S+)"
+                    + "|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[A-Za-z]{2,})"
+                    + "|(@\\w+)"
+                    + "|(#[\\w\\u0980-\\u09FF]+)"
+    );
 
-    private static final Map<Character,String>
-            VOWELS =
-            new HashMap<>();
+    private static final Pattern WORD_PATTERN = Pattern.compile("[\\u0980-\\u09FF]+");
 
-    private static final Map<Character,String>
-            VOWEL_SIGNS =
-            new HashMap<>();
-
-    private static final Map<Character,Character>
-            DIGITS =
-            new HashMap<>();
-
-    /*
-     * =============================
-     * ADVANCED RULES
-     * =============================
-     */
-
-    private static final Map<String,String>
-            JOINT =
-            new HashMap<>();
-
-    private static final Map<String,String>
-            PREFIX =
-            new HashMap<>();
-
-    private static final Map<String,String>
-            SUFFIX =
-            new HashMap<>();
-
-    /*
-     * =============================
-     * SPECIAL CHARACTER
-     * =============================
-     */
-
-    private static final char HASANTA='্';
-    private static final char ANUSWAR='ং';
-    private static final char CHANDRA='ঁ';
-    private static final char VISARGA='ঃ';
-    private static final char NUKTA='়';
-
-    /*
-     * =============================
-     * PRESERVE PATTERN
-     * =============================
-     */
-
-    private static final Pattern
-            PRESERVE_PATTERN =
-            Pattern.compile(
-
-                    "(https?://\\S+)"
-                            +"|(www\\.\\S+)"
-                            +"|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[A-Za-z]{2,})"
-                            +"|(@\\w+)"
-                            +"|(#[\\w\\u0980-\\u09FF]+)"
-
-            );
-
-    /*
-     * =============================
-     * STATIC INITIALIZER
-     * =============================
-     */
-
-    static{
-
+    static {
         initializeVowels();
-
         initializeVowelSigns();
-
         initializeConsonants();
-
         initializeDigits();
-
         initializeJointLetters();
-
         initializePrefixRules();
-
         initializeSuffixRules();
-
         initializeExceptionDictionary();
-
     }
-        /*
-     * ======================================
-     * INITIALIZE VOWELS
-     * ======================================
-     */
 
+    /* ====================================== INITIALIZE VOWELS ====================================== */
     private static void initializeVowels() {
-
         VOWELS.put('অ', "o");
         VOWELS.put('আ', "a");
-
         VOWELS.put('ই', "i");
         VOWELS.put('ঈ', "i");
-
         VOWELS.put('উ', "u");
         VOWELS.put('ঊ', "u");
-
         VOWELS.put('ঋ', "ri");
-
         VOWELS.put('এ', "e");
-
         VOWELS.put('ঐ', "oi");
-
         VOWELS.put('ও', "o");
-
         VOWELS.put('ঔ', "ou");
-
     }
 
-    /*
-     * ======================================
-     * INITIALIZE VOWEL SIGNS
-     * ======================================
-     */
-
+    /* ====================================== INITIALIZE VOWEL SIGNS ====================================== */
     private static void initializeVowelSigns() {
-
         VOWEL_SIGNS.put('া', "a");
-
         VOWEL_SIGNS.put('ি', "i");
         VOWEL_SIGNS.put('ী', "i");
-
         VOWEL_SIGNS.put('ু', "u");
         VOWEL_SIGNS.put('ূ', "u");
-
         VOWEL_SIGNS.put('ৃ', "ri");
-
         VOWEL_SIGNS.put('ে', "e");
-
         VOWEL_SIGNS.put('ৈ', "oi");
-
         VOWEL_SIGNS.put('ো', "o");
-
         VOWEL_SIGNS.put('ৌ', "ou");
-
     }
 
-    /*
-     * ======================================
-     * INITIALIZE DIGITS
-     * ======================================
-     */
-
+    /* ====================================== INITIALIZE DIGITS ====================================== */
     private static void initializeDigits() {
-
         DIGITS.put('০','0');
         DIGITS.put('১','1');
         DIGITS.put('২','2');
         DIGITS.put('৩','3');
         DIGITS.put('৪','4');
-
         DIGITS.put('৫','5');
         DIGITS.put('৬','6');
         DIGITS.put('৭','7');
         DIGITS.put('৮','8');
         DIGITS.put('৯','9');
-
     }
-        /*
-     * ======================================
-     * INITIALIZE CONSONANTS
-     * ======================================
-     */
 
+    /* ====================================== INITIALIZE CONSONANTS ====================================== */
     private static void initializeConsonants() {
-
         CONSONANTS.put('ক', "k");
         CONSONANTS.put('খ', "kh");
         CONSONANTS.put('গ', "g");
@@ -344,21 +182,14 @@ public final class BanglaToBanglishConverter {
         CONSONANTS.put('স', "s");
         CONSONANTS.put('হ', "h");
 
-        CONSONANTS.put('ড়', "r");
-        CONSONANTS.put('ঢ়', "rh");
-        CONSONANTS.put('য়', "y");
+        CONSONANTS.put('ড়', "r");
+        CONSONANTS.put('ঢ়', "rh");
+        CONSONANTS.put('য়', "y");
         CONSONANTS.put('ৎ', "t");
+    }
 
-            }
-        /*
-     * ======================================
-     * INITIALIZE JOINT LETTERS
-     * ======================================
-     */
-
+    /* ====================================== INITIALIZE JOINT LETTERS ====================================== */
     private static void initializeJointLetters() {
-
-        // ক Series
         JOINT.put("ক্ক", "kk");
         JOINT.put("ক্ত", "kt");
         JOINT.put("ক্ত্র", "ktr");
@@ -371,7 +202,6 @@ public final class BanglaToBanglishConverter {
         JOINT.put("ক্ষ্য", "kkhy");
         JOINT.put("ক্স", "ks");
 
-        // গ Series
         JOINT.put("গ্ধ", "gdh");
         JOINT.put("গ্ন", "gn");
         JOINT.put("গ্ন্য", "gny");
@@ -379,7 +209,6 @@ public final class BanglaToBanglishConverter {
         JOINT.put("গ্ব", "gb");
         JOINT.put("ঘ্ন", "ghn");
 
-        // ঙ Series
         JOINT.put("ঙ্ক", "nk");
         JOINT.put("ঙ্খ", "nkh");
         JOINT.put("ঙ্গ", "ng");
@@ -387,36 +216,30 @@ public final class BanglaToBanglishConverter {
         JOINT.put("ঙ্ঘ", "ngh");
         JOINT.put("ঙ্ক্ষ", "nksh");
 
-        // চ Series
         JOINT.put("চ্চ", "cc");
         JOINT.put("চ্ছ", "cch");
         JOINT.put("চ্ছ্ব", "cchw");
 
-        // জ Series
         JOINT.put("জ্জ", "jj");
         JOINT.put("জ্জ্ব", "jjw");
 
-        // ঞ Series
         JOINT.put("ঞ্চ", "nch");
         JOINT.put("ঞ্ছ", "nchh");
         JOINT.put("ঞ্জ", "nj");
         JOINT.put("ঞ্ঝ", "njh");
 
-        // ট/ড Series
         JOINT.put("ট্ট", "tt");
         JOINT.put("ড্ড", "dd");
         JOINT.put("ণ্ট", "nt");
         JOINT.put("ন্ঠ", "nth");
         JOINT.put("ণ্ড", "nd");
 
-        // ত Series
         JOINT.put("ত্ত", "tt");
         JOINT.put("ত্ত্ব", "ttw");
         JOINT.put("ত্ম", "tm");
         JOINT.put("ত্র", "tr");
         JOINT.put("থ্য", "thy");
 
-        // দ Series
         JOINT.put("দ্ভ", "dbh");
         JOINT.put("দ্ম", "dm");
         JOINT.put("দ্য", "dy");
@@ -424,10 +247,8 @@ public final class BanglaToBanglishConverter {
         JOINT.put("দ্ধ", "ddh");
         JOINT.put("দ্ব", "db");
 
-        // ধ Series
         JOINT.put("ধ্ব", "dhw");
 
-        // ন Series
         JOINT.put("ন্ত", "nt");
         JOINT.put("ন্ত্র", "ntr");
         JOINT.put("ন্থ", "nth");
@@ -436,7 +257,6 @@ public final class BanglaToBanglishConverter {
         JOINT.put("ন্ন", "nn");
         JOINT.put("ন্ম", "nm");
 
-        // প/ব/ম Series
         JOINT.put("প্ত", "pt");
         JOINT.put("প্ল", "pl");
         JOINT.put("ব্দ", "bd");
@@ -450,7 +270,6 @@ public final class BanglaToBanglishConverter {
         JOINT.put("ম্ম", "mm");
         JOINT.put("ম্য", "my");
 
-        // ল/শ/স/হ Series
         JOINT.put("ল্ক", "lk");
         JOINT.put("ল্প", "lp");
         JOINT.put("ল্ল", "ll");
@@ -470,29 +289,24 @@ public final class BanglaToBanglishConverter {
         JOINT.put("হ্ন", "hn");
         JOINT.put("হ্ম", "hm");
         JOINT.put("হ্য", "hy");
-            }
-        /*
-     * ======================================
-     * INITIALIZE PREFIX RULES
-     * ======================================
-     */
+    }
 
+    /* ====================================== INITIALIZE PREFIX RULES ====================================== */
     private static void initializePrefixRules() {
-
-        PREFIX.put("অ", "o");
-        PREFIX.put("অন", "on");
-        PREFIX.put("অপ", "opo");
         PREFIX.put("অধি", "odhi");
         PREFIX.put("অতি", "oti");
+        PREFIX.put("অপ", "opo");
+        PREFIX.put("অন", "on");
+        PREFIX.put("অ", "o");
 
         PREFIX.put("উপ", "upo");
         PREFIX.put("উৎ", "ut");
 
-        PREFIX.put("প্র", "pro");
         PREFIX.put("প্রতি", "proti");
+        PREFIX.put("প্র", "pro");
 
-        PREFIX.put("বি", "bi");
         PREFIX.put("বি:", "bi");
+        PREFIX.put("বি", "bi");
 
         PREFIX.put("সু", "su");
         PREFIX.put("কু", "ku");
@@ -503,49 +317,34 @@ public final class BanglaToBanglishConverter {
         PREFIX.put("পরা", "pora");
         PREFIX.put("আন্ত", "anto");
         PREFIX.put("সর্ব", "shorbo");
-
     }
 
-    /*
-     * ======================================
-     * INITIALIZE SUFFIX RULES
-     * ======================================
-     */
-
+    /* ====================================== INITIALIZE SUFFIX RULES ====================================== */
     private static void initializeSuffixRules() {
-
-        SUFFIX.put("টা", "ta");
-        SUFFIX.put("টি", "ti");
         SUFFIX.put("গুলো", "gulo");
         SUFFIX.put("গুলি", "guli");
         SUFFIX.put("দের", "der");
-        SUFFIX.put("কে", "ke");
-        SUFFIX.put("তে", "te");
-        SUFFIX.put("য়ের", "yer");
-        SUFFIX.put("এর", "er");
-        SUFFIX.put("র", "r");
-
+        SUFFIX.put("য়ের", "yer");
         SUFFIX.put("ভাবে", "bhabe");
         SUFFIX.put("খানা", "khana");
         SUFFIX.put("খানি", "khani");
-        SUFFIX.put("জন", "jon");
         SUFFIX.put("জনক", "jonok");
         SUFFIX.put("কারী", "kari");
-        SUFFIX.put("ত্ব", "tto");
-        SUFFIX.put("ময়", "moy");
         SUFFIX.put("শীল", "shil");
         SUFFIX.put("পূর্ণ", "purno");
-
+        SUFFIX.put("টা", "ta");
+        SUFFIX.put("টি", "ti");
+        SUFFIX.put("কে", "ke");
+        SUFFIX.put("তে", "te");
+        SUFFIX.put("এর", "er");
+        SUFFIX.put("জন", "jon");
+        SUFFIX.put("ত্ব", "tto");
+        SUFFIX.put("ময়", "moy");
+        SUFFIX.put("র", "r");
     }
-        /*
-     * ======================================
-     * INITIALIZE EXCEPTION DICTIONARY
-     * ======================================
-     */
 
+    /* ====================================== INITIALIZE EXCEPTION DICTIONARY ====================================== */
     private static void initializeExceptionDictionary() {
-
-        // Pronouns
         EXCEPTION.put("আমি", "ami");
         EXCEPTION.put("আমরা", "amra");
         EXCEPTION.put("তুমি", "tumi");
@@ -555,7 +354,6 @@ public final class BanglaToBanglishConverter {
         EXCEPTION.put("আপনি", "apni");
         EXCEPTION.put("আপনার", "apnar");
 
-        // Common Words
         EXCEPTION.put("বাংলা", "bangla");
         EXCEPTION.put("বাংলাদেশ", "bangladesh");
         EXCEPTION.put("ভালো", "bhalo");
@@ -565,7 +363,6 @@ public final class BanglaToBanglishConverter {
         EXCEPTION.put("মানুষ", "manush");
         EXCEPTION.put("পৃথিবী", "prithibi");
 
-        // Difficult Words
         EXCEPTION.put("স্বাধীনতা", "swadhinota");
         EXCEPTION.put("ঔষধ", "oshudh");
         EXCEPTION.put("ওষুধ", "oshudh");
@@ -581,7 +378,6 @@ public final class BanglaToBanglishConverter {
         EXCEPTION.put("শিক্ষা", "shikkha");
         EXCEPTION.put("শিক্ষক", "shikkhok");
 
-        // Verb
         EXCEPTION.put("করছি", "korchi");
         EXCEPTION.put("করেছিল", "korechilo");
         EXCEPTION.put("করবে", "korbe");
@@ -589,7 +385,6 @@ public final class BanglaToBanglishConverter {
         EXCEPTION.put("খাচ্ছি", "khacchi");
         EXCEPTION.put("যাচ্ছি", "jacchi");
 
-        // Places
         EXCEPTION.put("বিজয়নগর", "bijoynogor");
         EXCEPTION.put("ব্রাহ্মণবাড়িয়া", "brahmanbaria");
         EXCEPTION.put("ঢাকা", "dhaka");
@@ -600,528 +395,310 @@ public final class BanglaToBanglishConverter {
         EXCEPTION.put("বরিশাল", "barishal");
         EXCEPTION.put("রংপুর", "rangpur");
         EXCEPTION.put("ময়মনসিংহ", "mymensingh");
-
     }
-        /*
-     * ======================================
-     * SETTINGS
-     * ======================================
-     */
 
+    /* ====================================== SETTINGS ====================================== */
     public static void setStyle(Style style) {
-
         if (style != null) {
-
             currentStyle = style;
-
             CACHE.clear();
-
         }
-
     }
 
-    public static Style getStyle() {
+    public static Style getStyle() { return currentStyle; }
 
-        return currentStyle;
+    public static void setDebugMode(boolean enable) { debugMode = enable; }
+    public static boolean isDebugMode() { return debugMode; }
 
-    }
+    public static void setConvertDigits(boolean enable) { convertDigits = enable; }
+    public static boolean isConvertDigits() { return convertDigits; }
 
-    public static void setDebugMode(boolean enable) {
-
-        debugMode = enable;
-
-    }
-
-    public static boolean isDebugMode() {
-
-        return debugMode;
-
-    }
-
-    public static void setConvertDigits(boolean enable) {
-
-        convertDigits = enable;
-
-    }
-
-    public static boolean isConvertDigits() {
-
-        return convertDigits;
-
-    }
-
-    /*
-     * ======================================
-     * CACHE
-     * ======================================
-     */
-
-    public static void clearCache() {
-
-        CACHE.clear();
-
-    }
+    public static void clearCache() { CACHE.clear(); }
 
     private static void log(String message) {
-
-        if (debugMode) {
-
-            Log.d(TAG, message);
-
-        }
-
+        if (debugMode) Log.d(TAG, message);
     }
 
-    /*
-     * ======================================
-     * DICTIONARY
-     * ======================================
-     */
-
-    public static void addDictionaryWord(
-            String bangla,
-            String banglish) {
-
-        if (bangla == null || banglish == null)
-            return;
-
-        bangla = cleanUnicode(
-                Normalizer.normalize(
-                        bangla,
-                        Normalizer.Form.NFC));
-
-        DICTIONARY.put(
-                bangla.trim(),
-                banglish.trim());
-
+    /* ====================================== DICTIONARY ====================================== */
+    public static void addDictionaryWord(String bangla, String banglish) {
+        if (bangla == null || banglish == null) return;
+        bangla = cleanUnicode(Normalizer.normalize(bangla, Normalizer.Form.NFC));
+        DICTIONARY.put(bangla.trim(), banglish.trim());
         CACHE.remove(bangla);
-
     }
 
-    public static void removeDictionaryWord(
-            String bangla) {
-
-        if (bangla == null)
-            return;
-
+    public static void removeDictionaryWord(String bangla) {
+        if (bangla == null) return;
         DICTIONARY.remove(bangla);
-
         CACHE.remove(bangla);
-
     }
 
     public static void clearDictionary() {
-
         DICTIONARY.clear();
-
         CACHE.clear();
+    }
 
-            }
-        /*
-     * ======================================
-     * LOAD DICTIONARY
-     * ======================================
-     */
-
-    public static void loadDictionaryFromAssets(
-            Context context,
-            String fileName) {
-
-        if (context == null || fileName == null)
-            return;
+    /* ====================================== LOAD DICTIONARY ====================================== */
+    public static void loadDictionaryFromAssets(Context context, String fileName) {
+        if (context == null || fileName == null) return;
 
         try {
+            InputStream is = context.getAssets().open(fileName);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
 
-            InputStream is =
-                    context.getAssets().open(fileName);
-
-            BufferedReader reader =
-                    new BufferedReader(
-                            new InputStreamReader(
-                                    is,
-                                    StandardCharsets.UTF_8));
-
-            StringBuilder builder =
-                    new StringBuilder();
-
+            StringBuilder builder = new StringBuilder();
             String line;
-
             while ((line = reader.readLine()) != null) {
-
                 builder.append(line);
-
             }
-
             reader.close();
 
-            JSONObject object =
-                    new JSONObject(builder.toString());
-
-            Iterator<String> keys =
-                    object.keys();
+            JSONObject object = new JSONObject(builder.toString());
+            Iterator<String> keys = object.keys();
 
             while (keys.hasNext()) {
-
                 String key = keys.next();
-
-                DICTIONARY.put(
-                        cleanUnicode(key),
-                        object.getString(key));
-
+                DICTIONARY.put(cleanUnicode(key), object.getString(key));
             }
 
             CACHE.clear();
 
+        } catch (IOException | JSONException e) {
+            Log.e(TAG, "Dictionary Load Failed", e);
         }
-
-        catch (IOException | JSONException e) {
-
-            Log.e(TAG,
-                    "Dictionary Load Failed",
-                    e);
-
-        }
-
     }
-    
-        /*
-     * ======================================
-     * CLEAN UNICODE
-     * ======================================
-     */
 
+    /* ====================================== CLEAN UNICODE ====================================== */
     private static String cleanUnicode(String text) {
-
-        if (text == null) {
-            return "";
-        }
-
+        if (text == null) return "";
         text = Normalizer.normalize(text, Normalizer.Form.NFC);
-
         text = text.replace("\u200C", "");
         text = text.replace("\u200D", "");
         text = text.replace("\uFEFF", "");
-
         return text.trim();
-            }
-        /*
-     * ======================================
-     * LOOKUP DICTIONARY
-     * ======================================
-     */
+    }
 
+    /* ====================================== LOOKUP DICTIONARY ====================================== */
     private static String lookupDictionary(String word) {
-
-        if (word == null || word.isEmpty()) {
-            return null;
-        }
+        if (word == null || word.isEmpty()) return null;
 
         word = cleanUnicode(word);
 
         String cache = CACHE.get(word);
-
-        if (cache != null) {
-            return cache;
-        }
+        if (cache != null) return cache;
 
         String value = DICTIONARY.get(word);
+        if (value == null) value = EXCEPTION.get(word);
 
-        if (value == null) {
-            value = EXCEPTION.get(word);
-        }
-
-        if (value != null) {
-            CACHE.put(word, value);
-        }
+        if (value != null) CACHE.put(word, value);
 
         return value;
-
     }
-        /*
-     * ======================================
-     * CONVERT
-     * ======================================
-     */
 
-    public static String convert(String text) {
+    /* ====================================== LONGEST JOINT MATCH ====================================== */
+    private static String findLongestJoint(String word, int start) {
+        int maxLen = Math.min(8, word.length() - start);
+        for (int len = maxLen; len >= 2; len--) {
+            String sub = word.substring(start, start + len);
+            if (JOINT.containsKey(sub)) return sub;
+        }
+        return null;
+    }
 
-        if (text == null || text.isEmpty()) {
-            return "";
+    /* ====================================== CORE TRANSLITERATION ====================================== */
+    private static String transliterateCore(String word) {
+        if (word == null || word.isEmpty()) return "";
+
+        StringBuilder sb = new StringBuilder();
+        int i = 0;
+        int len = word.length();
+
+        while (i < len) {
+
+            String jointMatch = findLongestJoint(word, i);
+            if (jointMatch != null) {
+                sb.append(JOINT.get(jointMatch));
+                i += jointMatch.length();
+
+                if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
+                    sb.append(VOWEL_SIGNS.get(word.charAt(i)));
+                    i++;
+                } else if (i < len && word.charAt(i) == HASANTA) {
+                    // conjunct continues, no vowel added
+                } else if (currentStyle == Style.NATURAL) {
+                    sb.append("o");
+                }
+                continue;
+            }
+
+            char c = word.charAt(i);
+
+            if (c == HASANTA) {
+                i++;
+                continue;
+            }
+
+            if (CONSONANTS.containsKey(c)) {
+                sb.append(CONSONANTS.get(c));
+                i++;
+
+                if (i < len && word.charAt(i) == HASANTA) {
+                    i++;
+                } else if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
+                    sb.append(VOWEL_SIGNS.get(word.charAt(i)));
+                    i++;
+                } else if (currentStyle == Style.NATURAL) {
+                    sb.append("o");
+                }
+                continue;
+            }
+
+            if (VOWELS.containsKey(c)) {
+                sb.append(VOWELS.get(c));
+                i++;
+                continue;
+            }
+
+            if (VOWEL_SIGNS.containsKey(c)) {
+                sb.append(VOWEL_SIGNS.get(c));
+                i++;
+                continue;
+            }
+
+            if (c == ANUSWAR) {
+                sb.append("ng");
+                i++;
+                continue;
+            }
+
+            if (c == VISARGA) {
+                sb.append("h");
+                i++;
+                continue;
+            }
+
+            if (c == CHANDRA || c == NUKTA) {
+                i++;
+                continue;
+            }
+
+            if (DIGITS.containsKey(c)) {
+                if (convertDigits) sb.append(DIGITS.get(c));
+                else sb.append(c);
+                i++;
+                continue;
+            }
+
+            sb.append(c);
+            i++;
         }
 
-        text = cleanUnicode(text);
+        return sb.toString();
+    }
 
-        String dict = lookupDictionary(text);
+    /* ====================================== PROCESS WORD ====================================== */
+    private static String processWord(String word) {
+        if (word == null || word.isEmpty()) return word;
 
-        if (dict != null) {
-            return dict;
+        String cleaned = cleanUnicode(word);
+
+        String direct = lookupDictionary(cleaned);
+        if (direct != null) return direct;
+
+        String prefixMatch = null;
+        String prefixValue = null;
+        for (Map.Entry<String, String> e : PREFIX.entrySet()) {
+            String key = e.getKey();
+            if (cleaned.startsWith(key) && cleaned.length() > key.length()) {
+                if (prefixMatch == null || key.length() > prefixMatch.length()) {
+                    prefixMatch = key;
+                    prefixValue = e.getValue();
+                }
+            }
         }
 
-        Matcher matcher = PRESERVE_PATTERN.matcher(text);
+        String remaining = (prefixMatch != null) ? cleaned.substring(prefixMatch.length()) : cleaned;
 
-        StringBuilder result = new StringBuilder();
+        String suffixMatch = null;
+        String suffixValue = null;
+        for (Map.Entry<String, String> e : SUFFIX.entrySet()) {
+            String key = e.getKey();
+            if (remaining.endsWith(key) && remaining.length() > key.length()) {
+                if (suffixMatch == null || key.length() > suffixMatch.length()) {
+                    suffixMatch = key;
+                    suffixValue = e.getValue();
+                }
+            }
+        }
 
+        String core = (suffixMatch != null)
+                ? remaining.substring(0, remaining.length() - suffixMatch.length())
+                : remaining;
+
+        String result;
+
+        if (core.isEmpty()) {
+            result = transliterateCore(cleaned);
+        } else {
+            StringBuilder sb = new StringBuilder();
+            if (prefixValue != null) sb.append(prefixValue);
+            sb.append(transliterateCore(core));
+            if (suffixValue != null) sb.append(suffixValue);
+            result = sb.toString();
+        }
+
+        CACHE.put(cleaned, result);
+        return result;
+    }
+
+    /* ====================================== PROCESS GAP (non-preserved text) ====================================== */
+    private static String processGap(String gap) {
+        if (gap == null || gap.isEmpty()) return "";
+
+        StringBuilder sb = new StringBuilder();
+        Matcher wordMatcher = WORD_PATTERN.matcher(gap);
         int last = 0;
 
-        while (matcher.find()) {
-
-            if (matcher.start() > last) {
-
-                result.append(
-                        processSentence(
-                                text.substring(
-                                        last,
-                                        matcher.start()
-                                )
-                        )
-                );
-
-            }
-
-            result.append(matcher.group());
-
-            last = matcher.end();
-
+        while (wordMatcher.find()) {
+            sb.append(gap, last, wordMatcher.start());
+            String word = wordMatcher.group();
+            sb.append(processWord(word));
+            last = wordMatcher.end();
         }
 
-        if (last < text.length()) {
+        sb.append(gap.substring(last));
+        return sb.toString();
+    }
 
-            result.append(
-                    processSentence(
-                            text.substring(last)
-                    )
-            );
-
-        }
-
-        return result.toString();
-
-            }
-        /*
-     * ======================================
-     * PROCESS SENTENCE
-     * ======================================
-     */
-
-    private static String processSentence(String sentence) {
-
-        if (sentence == null || sentence.isEmpty()) {
-            return "";
-        }
+    /* ====================================== PROCESS SENTENCE ====================================== */
+    public static String processSentence(String text) {
+        if (text == null || text.isEmpty()) return "";
 
         StringBuilder result = new StringBuilder();
+        Matcher preserveMatcher = PRESERVE_PATTERN.matcher(text);
+        int lastEnd = 0;
 
-        String[] words = sentence.split("(\\s+)");
-
-        for (int i = 0; i < words.length; i++) {
-
-            result.appen    /*
-     * ======================================
-     * HELPER METHODS
-     * ======================================
-     */
-
-    private static boolean isBanglaConsonant(char c) {
-
-        return CONSONANTS.containsKey(c);
-
-    }
-
-    private static boolean isBanglaVowel(char c) {
-
-        return VOWELS.containsKey(c);
-
-    }
-
-    private static boolean isBanglaVowelSign(char c) {
-
-        return VOWEL_SIGNS.containsKey(c);
-
-    }
-
-    private static boolean isBanglaDigit(char c) {
-
-        return DIGITS.containsKey(c);
-
-    }
-
-    private static String getConsonant(char c) {
-
-        String value = CONSONANTS.get(c);
-
-        return value == null ? String.valueOf(c) : value;
-
-    }
-
-    private static String getVowel(char c) {
-
-        String value = VOWELS.get(c);
-
-        return value == null ? String.valueOf(c) : value;
-
-    }
-
-    private static String getVowelSign(char c) {
-
-        String value = VOWEL_SIGNS.get(c);
-
-        return value == null ? "" : value;
-
-    }
-
-    private static char getEnglishDigit(char c) {
-
-        Character value = DIGITS.get(c);
-
-        return value == null ? c : value;
-
-                }d(processWord(words[i]));
-
-            if (i < words.length - 1) {
-                result.append(" ");
-            }
-
+        while (preserveMatcher.find()) {
+            String gap = text.substring(lastEnd, preserveMatcher.start());
+            result.append(processGap(gap));
+            result.append(preserveMatcher.group());
+            lastEnd = preserveMatcher.end();
         }
 
+        result.append(processGap(text.substring(lastEnd)));
         return result.toString();
+    }
 
-                }
-        /*
-     * ======================================
-     * PROCESS WORD
-     * ======================================
-     */
+    /* ====================================== CONVERT (MAIN ENTRY) ====================================== */
+    public static String convert(String text) {
+        if (text == null || text.isEmpty()) return "";
 
-    private static String processWord(String word) {
+        String cleaned = cleanUnicode(text);
+        log("Converting: " + cleaned);
 
-        if (word == null || word.isEmpty()) {
-            return "";
-        }
+        String result = processSentence(cleaned);
+        log("Result: " + result);
 
-        String dictionary = lookupDictionary(word);
-
-        if (dictionary != null) {
-            return dictionary;
-        }
-
-        StringBuilder result = new StringBuilder();
-
-        int i = 0;
-
-        while (i < word.length()) {
-
-            // Try longest joint letter first
-            boolean matched = false;
-
-            for (int len = 4; len >= 2; len--) {
-
-                if (i + len <= word.length()) {
-
-                    String part = word.substring(i, i + len);
-
-                    String joint = JOINT.get(part);
-
-                    if (joint != null) {
-
-                        result.append(joint);
-
-                        i += len;
-
-                        matched = true;
-
-                        break;
-
-                    }
-
-                }
-
-            }
-
-            if (matched) {
-                continue;
-            }
-
-            char ch = word.charAt(i);
-                        // Independent Vowel
-            if (isBanglaVowel(ch)) {
-
-                result.append(getVowel(ch));
-
-                i++;
-
-                continue;
-
-            }
-
-            // Consonant
-            if (isBanglaConsonant(ch)) {
-
-                result.append(getConsonant(ch));
-
-                if (i + 1 < word.length()) {
-
-                    char next = word.charAt(i + 1);
-
-                    if (next == HASANTA) {
-
-                        i += 2;
-
-                        continue;
-
-                    }
-
-                    if (isBanglaVowelSign(next)) {
-
-                        result.append(getVowelSign(next));
-
-                        i += 2;
-
-                        continue;
-
-                    }
-
-                }
-
-                // Default inherent vowel (অ)
-                result.append("o");
-
-                i++;
-
-                continue;
-
-            }
-
-            // Vowel Sign
-            if (isBanglaVowelSign(ch)) {
-
-                result.append(getVowelSign(ch));
-
-                i++;
-
-                continue;
-
-            }
-
-            // Digit
-            if (convertDigits && isBanglaDigit(ch)) {
-
-                result.append(getEnglishDigit(ch));
-
-                i++;
-
-                continue;
-
-            }
-
-            // Others
-            result.append(ch);
-
-            i++;
-
-        }
-
-        return result.toString();
-
-                    }
-
-            
+        return result;
+    }
+}
