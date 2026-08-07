@@ -717,5 +717,411 @@ public final class BanglaToBanglishConverter {
         CACHE.clear();
 
             }
+        /*
+     * ======================================
+     * LOAD DICTIONARY
+     * ======================================
+     */
+
+    public static void loadDictionaryFromAssets(
+            Context context,
+            String fileName) {
+
+        if (context == null || fileName == null)
+            return;
+
+        try {
+
+            InputStream is =
+                    context.getAssets().open(fileName);
+
+            BufferedReader reader =
+                    new BufferedReader(
+                            new InputStreamReader(
+                                    is,
+                                    StandardCharsets.UTF_8));
+
+            StringBuilder builder =
+                    new StringBuilder();
+
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+
+                builder.append(line);
+
+            }
+
+            reader.close();
+
+            JSONObject object =
+                    new JSONObject(builder.toString());
+
+            Iterator<String> keys =
+                    object.keys();
+
+            while (keys.hasNext()) {
+
+                String key = keys.next();
+
+                DICTIONARY.put(
+                        cleanUnicode(key),
+                        object.getString(key));
+
+            }
+
+            CACHE.clear();
+
+        }
+
+        catch (IOException | JSONException e) {
+
+            Log.e(TAG,
+                    "Dictionary Load Failed",
+                    e);
+
+        }
+
+    }
     
-    
+        /*
+     * ======================================
+     * CLEAN UNICODE
+     * ======================================
+     */
+
+    private static String cleanUnicode(String text) {
+
+        if (text == null) {
+            return "";
+        }
+
+        text = Normalizer.normalize(text, Normalizer.Form.NFC);
+
+        text = text.replace("\u200C", "");
+        text = text.replace("\u200D", "");
+        text = text.replace("\uFEFF", "");
+
+        return text.trim();
+            }
+        /*
+     * ======================================
+     * LOOKUP DICTIONARY
+     * ======================================
+     */
+
+    private static String lookupDictionary(String word) {
+
+        if (word == null || word.isEmpty()) {
+            return null;
+        }
+
+        word = cleanUnicode(word);
+
+        String cache = CACHE.get(word);
+
+        if (cache != null) {
+            return cache;
+        }
+
+        String value = DICTIONARY.get(word);
+
+        if (value == null) {
+            value = EXCEPTION.get(word);
+        }
+
+        if (value != null) {
+            CACHE.put(word, value);
+        }
+
+        return value;
+
+    }
+        /*
+     * ======================================
+     * CONVERT
+     * ======================================
+     */
+
+    public static String convert(String text) {
+
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        text = cleanUnicode(text);
+
+        String dict = lookupDictionary(text);
+
+        if (dict != null) {
+            return dict;
+        }
+
+        Matcher matcher = PRESERVE_PATTERN.matcher(text);
+
+        StringBuilder result = new StringBuilder();
+
+        int last = 0;
+
+        while (matcher.find()) {
+
+            if (matcher.start() > last) {
+
+                result.append(
+                        processSentence(
+                                text.substring(
+                                        last,
+                                        matcher.start()
+                                )
+                        )
+                );
+
+            }
+
+            result.append(matcher.group());
+
+            last = matcher.end();
+
+        }
+
+        if (last < text.length()) {
+
+            result.append(
+                    processSentence(
+                            text.substring(last)
+                    )
+            );
+
+        }
+
+        return result.toString();
+
+            }
+        /*
+     * ======================================
+     * PROCESS SENTENCE
+     * ======================================
+     */
+
+    private static String processSentence(String sentence) {
+
+        if (sentence == null || sentence.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder result = new StringBuilder();
+
+        String[] words = sentence.split("(\\s+)");
+
+        for (int i = 0; i < words.length; i++) {
+
+            result.appen    /*
+     * ======================================
+     * HELPER METHODS
+     * ======================================
+     */
+
+    private static boolean isBanglaConsonant(char c) {
+
+        return CONSONANTS.containsKey(c);
+
+    }
+
+    private static boolean isBanglaVowel(char c) {
+
+        return VOWELS.containsKey(c);
+
+    }
+
+    private static boolean isBanglaVowelSign(char c) {
+
+        return VOWEL_SIGNS.containsKey(c);
+
+    }
+
+    private static boolean isBanglaDigit(char c) {
+
+        return DIGITS.containsKey(c);
+
+    }
+
+    private static String getConsonant(char c) {
+
+        String value = CONSONANTS.get(c);
+
+        return value == null ? String.valueOf(c) : value;
+
+    }
+
+    private static String getVowel(char c) {
+
+        String value = VOWELS.get(c);
+
+        return value == null ? String.valueOf(c) : value;
+
+    }
+
+    private static String getVowelSign(char c) {
+
+        String value = VOWEL_SIGNS.get(c);
+
+        return value == null ? "" : value;
+
+    }
+
+    private static char getEnglishDigit(char c) {
+
+        Character value = DIGITS.get(c);
+
+        return value == null ? c : value;
+
+                }d(processWord(words[i]));
+
+            if (i < words.length - 1) {
+                result.append(" ");
+            }
+
+        }
+
+        return result.toString();
+
+                }
+        /*
+     * ======================================
+     * PROCESS WORD
+     * ======================================
+     */
+
+    private static String processWord(String word) {
+
+        if (word == null || word.isEmpty()) {
+            return "";
+        }
+
+        String dictionary = lookupDictionary(word);
+
+        if (dictionary != null) {
+            return dictionary;
+        }
+
+        StringBuilder result = new StringBuilder();
+
+        int i = 0;
+
+        while (i < word.length()) {
+
+            // Try longest joint letter first
+            boolean matched = false;
+
+            for (int len = 4; len >= 2; len--) {
+
+                if (i + len <= word.length()) {
+
+                    String part = word.substring(i, i + len);
+
+                    String joint = JOINT.get(part);
+
+                    if (joint != null) {
+
+                        result.append(joint);
+
+                        i += len;
+
+                        matched = true;
+
+                        break;
+
+                    }
+
+                }
+
+            }
+
+            if (matched) {
+                continue;
+            }
+
+            char ch = word.charAt(i);
+                        // Independent Vowel
+            if (isBanglaVowel(ch)) {
+
+                result.append(getVowel(ch));
+
+                i++;
+
+                continue;
+
+            }
+
+            // Consonant
+            if (isBanglaConsonant(ch)) {
+
+                result.append(getConsonant(ch));
+
+                if (i + 1 < word.length()) {
+
+                    char next = word.charAt(i + 1);
+
+                    if (next == HASANTA) {
+
+                        i += 2;
+
+                        continue;
+
+                    }
+
+                    if (isBanglaVowelSign(next)) {
+
+                        result.append(getVowelSign(next));
+
+                        i += 2;
+
+                        continue;
+
+                    }
+
+                }
+
+                // Default inherent vowel (অ)
+                result.append("o");
+
+                i++;
+
+                continue;
+
+            }
+
+            // Vowel Sign
+            if (isBanglaVowelSign(ch)) {
+
+                result.append(getVowelSign(ch));
+
+                i++;
+
+                continue;
+
+            }
+
+            // Digit
+            if (convertDigits && isBanglaDigit(ch)) {
+
+                result.append(getEnglishDigit(ch));
+
+                i++;
+
+                continue;
+
+            }
+
+            // Others
+            result.append(ch);
+
+            i++;
+
+        }
+
+        return result.toString();
+
+                    }
+
+            
