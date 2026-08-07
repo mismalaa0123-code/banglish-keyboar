@@ -78,11 +78,11 @@ public final class BanglaToBanglishConverter {
     private static final Map<String,String> PREFIX = new HashMap<>();
     private static final Map<String,String> SUFFIX = new HashMap<>();
 
-    private static final char HASANTA = '্';
-    private static final char ANUSWAR = 'ং';
-    private static final char CHANDRA = 'ঁ';
-    private static final char VISARGA = 'ঃ';
-    private static final char NUKTA = '়';
+    private static final char HASANTA = '\u09CD';
+    private static final char ANUSWAR = '\u0982';
+    private static final char CHANDRA = '\u0981';
+    private static final char VISARGA = '\u0903';
+    private static final char NUKTA = '\u09BC';
 
     private static final Pattern PRESERVE_PATTERN = Pattern.compile(
             "(https?://\\S+)"
@@ -108,45 +108,45 @@ public final class BanglaToBanglishConverter {
 
     /* ====================================== INITIALIZE VOWELS ====================================== */
     private static void initializeVowels() {
-        VOWELS.put('অ', "o");
-        VOWELS.put('আ', "a");
-        VOWELS.put('ই', "i");
-        VOWELS.put('ঈ', "i");
-        VOWELS.put('উ', "u");
-        VOWELS.put('ঊ', "u");
-        VOWELS.put('ঋ', "ri");
-        VOWELS.put('এ', "e");
-        VOWELS.put('ঐ', "oi");
-        VOWELS.put('ও', "o");
-        VOWELS.put('ঔ', "ou");
+        VOWELS.put('\u0985', "o");
+        VOWELS.put('\u0986', "a");
+        VOWELS.put('\u0987', "i");
+        VOWELS.put('\u0988', "i");
+        VOWELS.put('\u0989', "u");
+        VOWELS.put('\u098A', "u");
+        VOWELS.put('\u098B', "ri");
+        VOWELS.put('\u098F', "e");
+        VOWELS.put('\u0990', "oi");
+        VOWELS.put('\u0993', "o");
+        VOWELS.put('\u0994', "ou");
     }
 
     /* ====================================== INITIALIZE VOWEL SIGNS ====================================== */
     private static void initializeVowelSigns() {
-        VOWEL_SIGNS.put('া', "a");
-        VOWEL_SIGNS.put('ি', "i");
-        VOWEL_SIGNS.put('ী', "i");
-        VOWEL_SIGNS.put('ু', "u");
-        VOWEL_SIGNS.put('ূ', "u");
-        VOWEL_SIGNS.put('ৃ', "ri");
-        VOWEL_SIGNS.put('ে', "e");
-        VOWEL_SIGNS.put('ৈ', "oi");
-        VOWEL_SIGNS.put('ো', "o");
-        VOWEL_SIGNS.put('ৌ', "ou");
+        VOWEL_SIGNS.put('\u09BE', "a");
+        VOWEL_SIGNS.put('\u09BF', "i");
+        VOWEL_SIGNS.put('\u09C0', "i");
+        VOWEL_SIGNS.put('\u09C1', "u");
+        VOWEL_SIGNS.put('\u09C2', "u");
+        VOWEL_SIGNS.put('\u09C3', "ri");
+        VOWEL_SIGNS.put('\u09C7', "e");
+        VOWEL_SIGNS.put('\u09C8', "oi");
+        VOWEL_SIGNS.put('\u09CB', "o");
+        VOWEL_SIGNS.put('\u09CC', "ou");
     }
 
     /* ====================================== INITIALIZE DIGITS ====================================== */
     private static void initializeDigits() {
-        DIGITS.put('০','0');
-        DIGITS.put('১','1');
-        DIGITS.put('২','2');
-        DIGITS.put('৩','3');
-        DIGITS.put('৪','4');
-        DIGITS.put('৫','5');
-        DIGITS.put('৬','6');
-        DIGITS.put('৭','7');
-        DIGITS.put('৮','8');
-        DIGITS.put('৯','9');
+        DIGITS.put('\u09E6','0');
+        DIGITS.put('\u09E7','1');
+        DIGITS.put('\u09E8','2');
+        DIGITS.put('\u09E9','3');
+        DIGITS.put('\u09EA','4');
+        DIGITS.put('\u09EB','5');
+        DIGITS.put('\u09EC','6');
+        DIGITS.put('\u09ED','7');
+        DIGITS.put('\u09EE','8');
+        DIGITS.put('\u09EF','9');
     }
 
     /* ====================================== INITIALIZE CONSONANTS ======================================
@@ -156,47 +156,47 @@ public final class BanglaToBanglishConverter {
      * 'য়' (U+09DF, YYA) IS a single precomposed codepoint, so it stays here.
      */
     private static void initializeConsonants() {
-        CONSONANTS.put('ক', "k");
-        CONSONANTS.put('খ', "kh");
-        CONSONANTS.put('গ', "g");
-        CONSONANTS.put('ঘ', "gh");
-        CONSONANTS.put('ঙ', "ng");
+        CONSONANTS.put('\u0995', "k");
+        CONSONANTS.put('\u0996', "kh");
+        CONSONANTS.put('\u0997', "g");
+        CONSONANTS.put('\u0998', "gh");
+        CONSONANTS.put('\u0999', "ng");
 
-        CONSONANTS.put('চ', "ch");
-        CONSONANTS.put('ছ', "chh");
-        CONSONANTS.put('জ', "j");
-        CONSONANTS.put('ঝ', "jh");
-        CONSONANTS.put('ঞ', "ny");
+        CONSONANTS.put('\u099A', "ch");
+        CONSONANTS.put('\u099B', "chh");
+        CONSONANTS.put('\u099C', "j");
+        CONSONANTS.put('\u099D', "jh");
+        CONSONANTS.put('\u099E', "ny");
 
-        CONSONANTS.put('ট', "t");
-        CONSONANTS.put('ঠ', "th");
-        CONSONANTS.put('ড', "d");
-        CONSONANTS.put('ঢ', "dh");
-        CONSONANTS.put('ণ', "n");
+        CONSONANTS.put('\u099F', "t");
+        CONSONANTS.put('\u09A0', "th");
+        CONSONANTS.put('\u09A1', "d");
+        CONSONANTS.put('\u09A2', "dh");
+        CONSONANTS.put('\u09A3', "n");
 
-        CONSONANTS.put('ত', "t");
-        CONSONANTS.put('থ', "th");
-        CONSONANTS.put('দ', "d");
-        CONSONANTS.put('ধ', "dh");
-        CONSONANTS.put('ন', "n");
+        CONSONANTS.put('\u09A4', "t");
+        CONSONANTS.put('\u09A5', "th");
+        CONSONANTS.put('\u09A6', "d");
+        CONSONANTS.put('\u09A7', "dh");
+        CONSONANTS.put('\u09A8', "n");
 
-        CONSONANTS.put('প', "p");
-        CONSONANTS.put('ফ', "ph");
-        CONSONANTS.put('ব', "b");
-        CONSONANTS.put('ভ', "bh");
-        CONSONANTS.put('ম', "m");
+        CONSONANTS.put('\u09AA', "p");
+        CONSONANTS.put('\u09AB', "ph");
+        CONSONANTS.put('\u09AC', "b");
+        CONSONANTS.put('\u09AD', "bh");
+        CONSONANTS.put('\u09AE', "m");
 
-        CONSONANTS.put('য', "j");
-        CONSONANTS.put('র', "r");
-        CONSONANTS.put('ল', "l");
+        CONSONANTS.put('\u09AF', "j");
+        CONSONANTS.put('\u09B0', "r");
+        CONSONANTS.put('\u09B2', "l");
 
-        CONSONANTS.put('শ', "sh");
-        CONSONANTS.put('ষ', "sh");
-        CONSONANTS.put('স', "s");
-        CONSONANTS.put('হ', "h");
+        CONSONANTS.put('\u09B6', "sh");
+        CONSONANTS.put('\u09B7', "sh");
+        CONSONANTS.put('\u09B8', "s");
+        CONSONANTS.put('\u09B9', "h");
 
-        CONSONANTS.put('য়', "y");
-        CONSONANTS.put('ৎ', "t");
+        CONSONANTS.put('\u09DF', "y");
+        CONSONANTS.put('\u09CE', "t");
     }
 
     /* ====================================== INITIALIZE NUKTA CONSONANTS ======================================
