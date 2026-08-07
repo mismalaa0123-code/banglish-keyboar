@@ -26,7 +26,7 @@ import java.util.regex.Matcher;
 /**
  * =====================================================
  * BanglaToBanglishConverter
- * Version : 3.1 (Fixed & Completed)
+ * Version : 3.2 (Fully Fixed - Java 17 / Android compatible)
  * Author  : Arafat Akaid
  * =====================================================
  */
@@ -62,7 +62,14 @@ public final class BanglaToBanglishConverter {
     private static final Map<String,String> DICTIONARY = new ConcurrentHashMap<>(65536);
     private static final Map<String,String> EXCEPTION = new ConcurrentHashMap<>(4096);
 
+    // Single-codepoint consonants (safe as char literals)
     private static final Map<Character,String> CONSONANTS = new HashMap<>();
+
+    // Consonants that are actually TWO Unicode codepoints (base + nukta),
+    // e.g. ড় (ড + ়), ঢ় (ঢ + ়). These CANNOT be char literals in Java,
+    // so they are stored as Strings and matched like joint letters.
+    private static final Map<String,String> NUKTA_CONSONANTS = new LinkedHashMap<>();
+
     private static final Map<Character,String> VOWELS = new HashMap<>();
     private static final Map<Character,String> VOWEL_SIGNS = new HashMap<>();
     private static final Map<Character,Character> DIGITS = new HashMap<>();
@@ -91,6 +98,7 @@ public final class BanglaToBanglishConverter {
         initializeVowels();
         initializeVowelSigns();
         initializeConsonants();
+        initializeNuktaConsonants();
         initializeDigits();
         initializeJointLetters();
         initializePrefixRules();
@@ -141,7 +149,12 @@ public final class BanglaToBanglishConverter {
         DIGITS.put('৯','9');
     }
 
-    /* ====================================== INITIALIZE CONSONANTS ====================================== */
+    /* ====================================== INITIALIZE CONSONANTS ======================================
+     * NOTE: 'ড়' and 'ঢ়' are NOT included here because they are two-codepoint
+     * sequences (base consonant + nukta U+09BC) and are not valid single
+     * `char` literals in Java. They are handled in NUKTA_CONSONANTS instead.
+     * 'য়' (U+09DF, YYA) IS a single precomposed codepoint, so it stays here.
+     */
     private static void initializeConsonants() {
         CONSONANTS.put('ক', "k");
         CONSONANTS.put('খ', "kh");
@@ -182,10 +195,17 @@ public final class BanglaToBanglishConverter {
         CONSONANTS.put('স', "s");
         CONSONANTS.put('হ', "h");
 
-        CONSONANTS.put('ড়', "r");
-        CONSONANTS.put('ঢ়', "rh");
         CONSONANTS.put('য়', "y");
         CONSONANTS.put('ৎ', "t");
+    }
+
+    /* ====================================== INITIALIZE NUKTA CONSONANTS ======================================
+     * These are String-keyed (base consonant codepoint + U+09BC nukta codepoint)
+     * because they cannot legally be represented as a single Java `char`.
+     */
+    private static void initializeNuktaConsonants() {
+        NUKTA_CONSONANTS.put("\u09A1\u09BC", "r");  // ড়
+        NUKTA_CONSONANTS.put("\u09A2\u09BC", "rh");  // ঢ়
     }
 
     /* ====================================== INITIALIZE JOINT LETTERS ====================================== */
@@ -505,6 +525,15 @@ public final class BanglaToBanglishConverter {
         return null;
     }
 
+    /* ====================================== NUKTA CONSONANT MATCH (ড়, ঢ়) ====================================== */
+    private static String findNuktaConsonant(String word, int start) {
+        if (start + 1 < word.length()) {
+            String pair = word.substring(start, start + 2);
+            if (NUKTA_CONSONANTS.containsKey(pair)) return pair;
+        }
+        return null;
+    }
+
     /* ====================================== CORE TRANSLITERATION ====================================== */
     private static String transliterateCore(String word) {
         if (word == null || word.isEmpty()) return "";
@@ -515,6 +544,7 @@ public final class BanglaToBanglishConverter {
 
         while (i < len) {
 
+            // 1) Joint conjuncts (longest match first)
             String jointMatch = findLongestJoint(word, i);
             if (jointMatch != null) {
                 sb.append(JOINT.get(jointMatch));
@@ -525,6 +555,23 @@ public final class BanglaToBanglishConverter {
                     i++;
                 } else if (i < len && word.charAt(i) == HASANTA) {
                     // conjunct continues, no vowel added
+                } else if (currentStyle == Style.NATURAL) {
+                    sb.append("o");
+                }
+                continue;
+            }
+
+            // 2) Nukta consonants (ড়, ঢ়) - two codepoints
+            String nuktaMatch = findNuktaConsonant(word, i);
+            if (nuktaMatch != null) {
+                sb.append(NUKTA_CONSONANTS.get(nuktaMatch));
+                i += nuktaMatch.length();
+
+                if (i < len && word.charAt(i) == HASANTA) {
+                    i++;
+                } else if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
+                    sb.append(VOWEL_SIGNS.get(word.charAt(i)));
+                    i++;
                 } else if (currentStyle == Style.NATURAL) {
                     sb.append("o");
                 }
