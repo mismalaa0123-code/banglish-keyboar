@@ -26,7 +26,7 @@ import java.util.regex.Matcher;
 /**
  * =====================================================
  * BanglaToBanglishConverter
- * Version : 4.0 STEP-4 (Fola + Conjunct Engine)
+ * Version : 4.0 STEP-5 (Vowel + Inherent Vowel Engine)
  * Author  : Arafat Akaid
  * =====================================================
  */
@@ -842,6 +842,39 @@ public final class BanglaToBanglishConverter {
         return value;
     }
 
+    /* ====================================== VOWEL / INHERENT VOWEL HELPERS ====================================== */
+
+    /**
+     * Returns the natural Banglish vowel for a Bengali vowel sign.
+     * The mapping is kept explicit so future style-specific pronunciation
+     * rules can be added without changing the core scanner.
+     */
+    private static String naturalVowelSign(char sign) {
+        String value = VOWEL_SIGNS.get(sign);
+        if (value == null) return null;
+        if (currentStyle == Style.NATURAL) {
+            // Bangladesh chat-style typing normally uses i/u for the long
+            // Bengali vowel signs as well.
+            if (sign == '\u09C0') return "i";
+            if (sign == '\u09C2') return "u";
+        }
+        return value;
+    }
+
+    /** True when the next Bengali code point starts another consonant. */
+    private static boolean hasFollowingConsonant(String word, int index) {
+        return index >= 0 && index < word.length() && isBengaliConsonantAt(word, index);
+    }
+
+    /**
+     * Whether a bare consonant should receive its inherent vowel. This is
+     * deliberately conservative: final consonants do not receive an extra
+     * "o", while a consonant followed by another consonant does.
+     */
+    private static boolean needsInherentO(String word, int nextIndex) {
+        return hasFollowingConsonant(word, nextIndex);
+    }
+
     /* ====================================== CORE TRANSLITERATION ====================================== */
     private static String transliterateCore(String word) {
         if (word == null || word.isEmpty()) return "";
@@ -858,14 +891,18 @@ public final class BanglaToBanglishConverter {
                 i += jointMatch.length();
 
                 if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
-                    sb.append(naturalSign(VOWEL_SIGNS.get(word.charAt(i))));
+                    sb.append(naturalSign(naturalVowelSign(word.charAt(i))));
                     i++;
                 } else if (i < len && word.charAt(i) == HASANTA) {
                     i++;
-                } else {
-                    // A closed conjunct at the end of a Bengali word often
-                    // carries a pronounced inherent vowel: প্রশ্ন -> proshno,
-                    // স্বপ্ন -> shopno, শক্ত -> shokto.
+                } else if (i < len && isBengaliConsonantAt(word, i)) {
+                    // A conjunct followed by another consonant normally carries
+                    // the Bengali inherent vowel: প্র + থ -> proth...,
+                    // প্র + শ্ন -> proshno.
+                    sb.append("o");
+                } else if (i >= len) {
+                    // A final conjunct commonly carries the spoken inherent
+                    // vowel in natural Banglish: শক্ত -> shokto, প্রশ্ন -> proshno.
                     sb.append("o");
                 }
                 continue;
@@ -877,15 +914,13 @@ public final class BanglaToBanglishConverter {
                 sb.append(FOLA.get(folaMatch));
                 i += folaMatch.length();
                 if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
-                    sb.append(naturalSign(VOWEL_SIGNS.get(word.charAt(i))));
+                    sb.append(naturalSign(naturalVowelSign(word.charAt(i))));
                     i++;
                 } else if (i < len && word.charAt(i) == HASANTA) {
                     i++;
                 } else if (i < len && isBengaliConsonantAt(word, i)) {
-                    // The following consonant owns its own inherent vowel;
-                    // do not insert an extra vowel after the phala.
-                } else if (i >= len) {
-                    // A final phala may carry an inherent vowel in natural typing.
+                    // Another consonant follows, so the cluster gets its
+                    // inherent vowel before that next consonant.
                     sb.append("o");
                 }
                 continue;
@@ -896,11 +931,11 @@ public final class BanglaToBanglishConverter {
             if (folaEnd >= 0) {
                 i = folaEnd;
                 if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
-                    sb.append(naturalSign(VOWEL_SIGNS.get(word.charAt(i))));
+                    sb.append(naturalSign(naturalVowelSign(word.charAt(i))));
                     i++;
                 } else if (i < len && word.charAt(i) == HASANTA) {
                     i++;
-                } else if (i >= len) {
+                } else if (i < len && isBengaliConsonantAt(word, i)) {
                     sb.append("o");
                 }
                 continue;
@@ -915,9 +950,9 @@ public final class BanglaToBanglishConverter {
                 if (i < len && word.charAt(i) == HASANTA) {
                     i++;
                 } else if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
-                    sb.append(naturalSign(VOWEL_SIGNS.get(word.charAt(i))));
+                    sb.append(naturalSign(naturalVowelSign(word.charAt(i))));
                     i++;
-                } else if (i < len) {
+                } else if (i < len && isBengaliConsonantAt(word, i)) {
                     sb.append("o");
                 }
                 continue;
@@ -957,9 +992,14 @@ public final class BanglaToBanglishConverter {
                         sb.append(naturalSign(roman)).append(naturalSign(nextRoman));
                         i += 3;
                         if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
-                            sb.append(naturalSign(VOWEL_SIGNS.get(word.charAt(i))));
+                            sb.append(naturalSign(naturalVowelSign(word.charAt(i))));
                             i++;
-                        } else {
+                        } else if (i < len && isBengaliConsonantAt(word, i)) {
+                            sb.append("o");
+                        } else if (i >= len) {
+                            // A two-consonant conjunct at word end commonly
+                            // carries the spoken inherent vowel: স্বপ্ন -> swopno,
+                            // শক্ত -> shokto.
                             sb.append("o");
                         }
                         continue;
@@ -993,9 +1033,15 @@ public final class BanglaToBanglishConverter {
                     }
                     i++;
                 } else if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
-                    sb.append(naturalSign(VOWEL_SIGNS.get(word.charAt(i))));
+                    sb.append(naturalSign(naturalVowelSign(word.charAt(i))));
                     i++;
-                } else if (i < len) {
+                } else if (i < len && isBengaliConsonantAt(word, i)) {
+                    // A bare consonant before another consonant normally has
+                    // the inherent vowel.
+                    sb.append("o");
+                } else if (i >= len && i >= 2 && word.charAt(i - 1) == HASANTA) {
+                    // The final member of a conjunct often retains the spoken
+                    // inherent vowel in natural Banglish: প্রশ্ন -> proshno.
                     sb.append("o");
                 }
                 continue;
@@ -1010,7 +1056,7 @@ public final class BanglaToBanglishConverter {
 
             // 8) Standalone vowel signs (defensive fallback).
             if (VOWEL_SIGNS.containsKey(c)) {
-                sb.append(naturalSign(VOWEL_SIGNS.get(c)));
+                sb.append(naturalSign(naturalVowelSign(c)));
                 i++;
                 continue;
             }
