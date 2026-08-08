@@ -26,7 +26,7 @@ import java.util.regex.Matcher;
 /**
  * =====================================================
  * BanglaToBanglishConverter
- * Version : 4.0 STEP-6 (Verb Inflection Engine)
+ * Version : 4.0 STEP-7 (Unicode Robustness)
  * Author  : Arafat Akaid
  * =====================================================
  */
@@ -652,6 +652,42 @@ public final class BanglaToBanglishConverter {
         if (debugMode) Log.d(TAG, message);
     }
 
+    /* ====================================== UNICODE SAFETY HELPERS ====================================== */
+
+    /** Returns true when the string contains at least one Bengali code point. */
+    private static boolean hasBengaliCodePoint(String text) {
+        if (text == null || text.isEmpty()) return false;
+        for (int i = 0; i < text.length();) {
+            int cp = text.codePointAt(i);
+            if (cp >= 0x0980 && cp <= 0x09FF) return true;
+            i += Character.charCount(cp);
+        }
+        return false;
+    }
+
+    /**
+     * Removes isolated Unicode surrogate code units from malformed pasted text.
+     * Valid supplementary characters are preserved. Bengali itself is BMP, so
+     * this only protects the scanner from broken UTF-16 input.
+     */
+    private static String removeIsolatedSurrogates(String text) {
+        if (text == null || text.isEmpty()) return text;
+        StringBuilder out = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (Character.isHighSurrogate(c)) {
+                if (i + 1 < text.length() && Character.isLowSurrogate(text.charAt(i + 1))) {
+                    out.append(c).append(text.charAt(++i));
+                }
+            } else if (Character.isLowSurrogate(c)) {
+                // Ignore an unmatched low surrogate.
+            } else {
+                out.append(c);
+            }
+        }
+        return out.toString();
+    }
+
     /* ====================================== DICTIONARY ====================================== */
     public static void addDictionaryWord(String bangla, String banglish) {
         if (bangla == null || banglish == null) return;
@@ -708,13 +744,76 @@ public final class BanglaToBanglishConverter {
     }
 
     /* ====================================== CLEAN UNICODE ====================================== */
+    /**
+     * STEP-7 Unicode normalizer.
+     *
+     * Goals:
+     *  - normalize decomposed Bengali sequences to NFC;
+     *  - remove invisible formatting characters that can break dictionary
+     *    matching (ZWJ/ZWNJ/BOM/word-joiner);
+     *  - remove variation selectors and other zero-width format marks;
+     *  - collapse accidental duplicate Bengali hasanta/sign marks where it is
+     *    safe to do so;
+     *  - preserve normal spaces/newlines/punctuation.
+     *
+     * This is deliberately conservative: it does NOT try to "correct" Bengali
+     * spelling. Linguistic correction remains the job of the dictionary/rules.
+     */
     private static String cleanUnicode(String text) {
         if (text == null) return "";
-        text = Normalizer.normalize(text, Normalizer.Form.NFC);
-        text = text.replace("\u200C", "");
-        text = text.replace("\u200D", "");
-        text = text.replace("\uFEFF", "");
-        return text.trim();
+
+        String safe = removeIsolatedSurrogates(text);
+        String s = Normalizer.normalize(safe, Normalizer.Form.NFC);
+
+        // Invisible characters which have no useful role in our transliteration
+        // engine. They frequently appear after copy/paste from web pages/apps.
+        s = s.replace("\uFEFF", ""); // BOM / zero-width no-break space
+        s = s.replace("\u200B", ""); // zero-width space
+        s = s.replace("\u200C", ""); // ZWNJ
+        s = s.replace("\u200D", ""); // ZWJ
+        s = s.replace("\u2060", ""); // word joiner
+        s = s.replace("\u2061", ""); // function application format mark
+        s = s.replace("\u2062", "");
+        s = s.replace("\u2063", "");
+        s = s.replace("\u2064", "");
+        s = s.replace("\u2066", "");
+        s = s.replace("\u2067", "");
+        s = s.replace("\u2068", "");
+        s = s.replace("\u2069", "");
+        s = s.replace("\uFE00", ""); // variation selector 1
+        s = s.replace("\uFE01", "");
+        s = s.replace("\uFE02", "");
+        s = s.replace("\uFE03", "");
+        s = s.replace("\uFE04", "");
+        s = s.replace("\uFE05", "");
+        s = s.replace("\uFE06", "");
+        s = s.replace("\uFE07", "");
+        s = s.replace("\uFE08", "");
+        s = s.replace("\uFE09", "");
+        s = s.replace("\uFE0A", "");
+        s = s.replace("\uFE0B", "");
+        s = s.replace("\uFE0C", "");
+        s = s.replace("\uFE0D", "");
+        s = s.replace("\uFE0E", "");
+        s = s.replace("\uFE0F", ""); // variation selector 16
+
+        // Normalize again after removing format characters so decomposed pairs
+        // exposed by cleanup are composed when Unicode has a canonical form.
+        s = Normalizer.normalize(s, Normalizer.Form.NFC);
+
+        // Safe cleanup of repeated hasanta/sign characters often introduced by
+        // IME composition or pasted text. We intentionally do not collapse
+        // arbitrary repeated letters because that would change user spelling.
+        s = s.replaceAll("\\u09CD{2,}", "\u09CD");
+        s = s.replaceAll("[\\u09BF\\u09C0]{2,}", "\u09BF");
+        s = s.replaceAll("[\\u09C1\\u09C2]{2,}", "\u09C1");
+
+        // Remove stray combining marks only when they are at the beginning of
+        // the string or immediately after whitespace/punctuation. Valid marks
+        // attached to a Bengali consonant/vowel are preserved.
+        s = s.replaceAll("(^|[\\s\\p{Punct}])(?:\\u09BC|\\u09CD|\\u09BE|\\u09BF|\\u09C0|\\u09C1|\\u09C2|\\u09C3|\\u09C7|\\u09C8|\\u09CB|\\u09CC|\\u0981|\\u0982|\\u0983)+", "$1");
+
+        return s.trim();
     }
 
     /* ====================================== LOOKUP DICTIONARY ====================================== */
