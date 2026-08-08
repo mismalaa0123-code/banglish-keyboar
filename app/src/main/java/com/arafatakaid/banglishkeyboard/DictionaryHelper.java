@@ -21,82 +21,164 @@ public class DictionaryHelper {
 
     private static final String TAG = "DictionaryHelper";
 
-    private Map<String, String> dictionary = new HashMap<>();
-    private static DictionaryHelper instance;
+    private static volatile DictionaryHelper instance;
+
+    private final Map<String, String> dictionary = new HashMap<>();
+    private volatile boolean loaded = false;
 
     private DictionaryHelper(Context context) {
-        loadDictionary(context);
+        loadDictionary(context.getApplicationContext());
     }
 
-    public static synchronized DictionaryHelper getInstance(Context context) {
+    public static DictionaryHelper getInstance(Context context) {
         if (instance == null) {
-            instance = new DictionaryHelper(context.getApplicationContext());
+            synchronized (DictionaryHelper.class) {
+                if (instance == null) {
+                    instance = new DictionaryHelper(context.getApplicationContext());
+                }
+            }
         }
         return instance;
     }
 
     /**
-     * Normalize a key: trim, NFC normalize and remove common invisible characters
+     * Normalize dictionary keys and lookup text consistently.
+     * Keeps the existing NFC normalization and invisible-character cleanup.
      */
     private static String normalizeKey(String s) {
         if (s == null) return null;
+
         String n = Normalizer.normalize(s.trim(), Normalizer.Form.NFC);
-        // Remove common invisible/zero-width characters (zero-width space, BOM)
-        return n.replace("\u200B", "").replace("\uFEFF", "");
+
+        return n
+                .replace("\u200B", "")
+                .replace("\u200C", "")
+                .replace("\u200D", "")
+                .replace("\uFEFF", "");
     }
 
     private void loadDictionary(Context context) {
-        AssetManager am = context.getAssets();
-        // try-with-resources ensures streams are closed properly
-        try (InputStream is = am.open("dictionary.json");
-             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+        if (loaded) return;
 
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                sb.append(line);
+        synchronized (dictionary) {
+            if (loaded) return;
+
+            AssetManager am = context.getAssets();
+
+            try (InputStream is = am.open("dictionary.json");
+                 BufferedReader reader = new BufferedReader(
+                         new InputStreamReader(is, StandardCharsets.UTF_8))) {
+
+                StringBuilder sb = new StringBuilder();
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+
+                JSONObject json = new JSONObject(sb.toString());
+
+                Iterator<String> keys = json.keys();
+                int added = 0;
+                int skipped = 0;
+
+                while (keys.hasNext()) {
+                    String key = keys.next();
+
+                    String normalizedKey = normalizeKey(key);
+                    if (normalizedKey == null || normalizedKey.isEmpty()) {
+                        skipped++;
+                        continue;
+                    }
+
+                    String value = json.optString(key, "");
+                    if (value == null) {
+                        skipped++;
+                        continue;
+                    }
+
+                    value = value.trim();
+                    if (value.isEmpty()) {
+                        skipped++;
+                        continue;
+                    }
+
+                    // Keep the first valid value for a normalized key.
+                    // This prevents a later duplicate normalized key from
+                    // silently replacing an earlier dictionary entry.
+                    if (!dictionary.containsKey(normalizedKey)) {
+                        dictionary.put(normalizedKey, value);
+                        added++;
+                    } else {
+                        skipped++;
+                    }
+                }
+
+                loaded = true;
+
+                Log.d(
+                        TAG,
+                        "Loaded dictionary entries: "
+                                + added
+                                + " (map size: "
+                                + dictionary.size()
+                                + ", skipped: "
+                                + skipped
+                                + ")"
+                );
+
+            } catch (IOException e) {
+                loaded = false;
+                Log.e(TAG, "IOException while loading dictionary.json", e);
+
+            } catch (JSONException e) {
+                loaded = false;
+                Log.e(TAG, "JSONException while parsing dictionary.json", e);
+
+            } catch (RuntimeException e) {
+                loaded = false;
+                Log.e(TAG, "Unexpected error while loading dictionary.json", e);
             }
-
-            JSONObject json = new JSONObject(sb.toString());
-            Iterator<String> keys = json.keys();
-            int added = 0;
-            while (keys.hasNext()) {
-                String key = keys.next();
-                String normalizedKey = normalizeKey(key);
-                if (normalizedKey == null || normalizedKey.isEmpty()) continue;
-                String value = json.optString(key, "");
-                dictionary.put(normalizedKey, value);
-                added++;
-            }
-
-            Log.d(TAG, "Loaded dictionary entries: " + added + " (map size: " + dictionary.size() + ")");
-        } catch (IOException e) {
-            Log.e(TAG, "IOException while loading dictionary: " + e.getMessage());
-            e.printStackTrace();
-        } catch (JSONException e) {
-            Log.e(TAG, "JSONException while parsing dictionary.json: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 
+    /**
+     * Exact normalized dictionary lookup.
+     */
     public String lookup(String banglaText) {
-        if (banglaText == null) return null;
         String key = normalizeKey(banglaText);
-        if (key == null || key.isEmpty()) return null;
+
+        if (key == null || key.isEmpty()) {
+            return null;
+        }
+
         return dictionary.get(key);
     }
 
+    /**
+     * Checks whether an exact normalized key exists.
+     */
     public boolean contains(String banglaText) {
         String key = normalizeKey(banglaText);
-        if (key == null || key.isEmpty()) return false;
+
+        if (key == null || key.isEmpty()) {
+            return false;
+        }
+
         return dictionary.containsKey(key);
     }
 
-    // ডিকশনারিতে মোট কতগুলো শব্দ আছে তা জানার মেথড
+    /**
+     * Returns the number of successfully loaded dictionary entries.
+     */
     public int getWordCount() {
-        if (dictionary != null) {
-            return dictionary.size();
-        }
-        return 0;
+        return dictionary.size();
+    }
+
+    /**
+     * Returns whether dictionary.json was loaded successfully.
+     */
+    public boolean isLoaded() {
+        return loaded;
     }
 }
