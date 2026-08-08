@@ -26,7 +26,7 @@ import java.util.regex.Matcher;
 /**
  * =====================================================
  * BanglaToBanglishConverter
- * Version : 4.0 STEP-1 (Natural Banglish Core)
+ * Version : 4.0 STEP-4 (Fola + Conjunct Engine)
  * Author  : Arafat Akaid
  * =====================================================
  */
@@ -80,6 +80,7 @@ public final class BanglaToBanglishConverter {
     private static final Map<Character,Character> DIGITS = new HashMap<>();
 
     private static final Map<String,String> JOINT = new HashMap<>();
+    private static final Map<String,String> FOLA = new LinkedHashMap<>();
     private static final Map<String,String> PREFIX = new HashMap<>();
     private static final Map<String,String> SUFFIX = new HashMap<>();
 
@@ -106,6 +107,7 @@ public final class BanglaToBanglishConverter {
         initializeNuktaConsonants();
         initializeDigits();
         initializeJointLetters();
+        initializeFolaRules();
         initializePrefixRules();
         initializeSuffixRules();
         initializeExceptionDictionary();
@@ -314,6 +316,112 @@ public final class BanglaToBanglishConverter {
         JOINT.put("হ্ন", "hn");
         JOINT.put("হ্ম", "hm");
         JOINT.put("হ্য", "hy");
+        // Additional high-frequency conjuncts
+        JOINT.put("ক্ট", "kt");
+        JOINT.put("ক্ন", "kn");
+        JOINT.put("ক্ম", "km");
+        JOINT.put("ক্র", "kr");
+        JOINT.put("খ্র", "khr");
+        JOINT.put("গ্র", "gr");
+        JOINT.put("ঘ্র", "ghr");
+        JOINT.put("চ্র", "chr");
+        JOINT.put("জ্জ", "jj");
+        JOINT.put("জ্র", "jr");
+        JOINT.put("ঝ্র", "jhr");
+        JOINT.put("ট্র", "tr");
+        JOINT.put("ড্র", "dr");
+        JOINT.put("ঢ্র", "dhr");
+        JOINT.put("ণ্ঠ", "nth");
+        JOINT.put("ণ্ঢ", "ndh");
+        JOINT.put("ণ্ম", "nm");
+        JOINT.put("ত্য", "ty");
+        JOINT.put("দ্গ", "dg");
+        JOINT.put("দ্ঘ", "dgh");
+        JOINT.put("দ্ব", "dw");
+        JOINT.put("দ্ভ্র", "dbhr");
+        JOINT.put("ধ্র", "dhr");
+        JOINT.put("ন্ব", "nw");
+        JOINT.put("ন্র", "nr");
+        JOINT.put("প্ট", "pt");
+        JOINT.put("প্স", "ps");
+        JOINT.put("প্র", "pr");
+        JOINT.put("ফ্র", "fr");
+        JOINT.put("ব্জ", "bj");
+        JOINT.put("ব্র", "br");
+        JOINT.put("ভ্য", "bhy");
+        JOINT.put("ম্র", "mr");
+        JOINT.put("ল্ক", "lk");
+        JOINT.put("ল্গ", "lg");
+        JOINT.put("ল্ম", "lm");
+        JOINT.put("শ্র", "shr");
+        JOINT.put("ষ্ক", "shk");
+        JOINT.put("ষ্প", "shp");
+        JOINT.put("ষ্ম", "shm");
+        JOINT.put("স্ক্র", "skr");
+        JOINT.put("স্ট্র", "str");
+        JOINT.put("স্ন", "sn");
+        JOINT.put("স্ন্য", "sny");
+        JOINT.put("স্র", "sr");
+        JOINT.put("হ্র", "hr");
+    }
+
+    /* ====================================== INITIALIZE FOLA RULES ====================================== */
+    /**
+     * Common Bengali phala clusters. These are kept separate from the generic
+     * conjunct table because the second consonant changes shape/pronunciation
+     * when used as a phala. Values target Bangladesh-style natural typing.
+     */
+    private static void initializeFolaRules() {
+        // র-ফলা
+        String[] rFola = {
+                "ক্র:k r", "গ্র:g r", "প্র:p r", "ব্র:b r", "ভ্র:bh r",
+                "দ্র:d r", "ধ্র:dh r", "ত্র:t r", "থ্র:th r", "শ্র:sh r",
+                "স্র:s r", "হ্র:h r", "ম্র:m r", "ন্র:n r", "ফ্র:f r",
+                "ভ্র:bh r", "র্র:r r", "ট্র:t r", "ড্র:d r", "চ্র:ch r",
+                "জ্র:j r", "প্ল:p l", "ক্ল:k l", "গ্ল:g l", "ফ্ল:f l",
+                "ব্ল:b l", "ভ্ল:bh l", "শ্ল:sh l", "স্ল:s l", "হ্ল:h l"
+        };
+        // The table above is normalized below to avoid spaces in generated output.
+        for (String item : rFola) {
+            int colon = item.indexOf(':');
+            if (colon > 0) FOLA.put(item.substring(0, colon), item.substring(colon + 1).replace(" ", ""));
+        }
+
+        // য-ফলা
+        String[] yFola = {
+                "ক্য:ky", "খ্য:khy", "গ্য:gy", "ঘ্য:ghy", "চ্য:chy", "ছ্য:chhy",
+                "জ্য:jy", "ঝ্য:jhy", "ট্য:ty", "ঠ্য:thy", "ড্য:dy", "ঢ্য:dhy",
+                "ত্য:ty", "থ্য:thy", "দ্য:dy", "ধ্য:dhy", "ন্য:ny", "প্য:py",
+                "ফ্য:phy", "ব্য:by", "ভ্য:bhy", "ম্য:my", "ল্য:ly", "শ্য:shy",
+                "ষ্য:shy", "স্য:sy", "হ্য:hy"
+        };
+        for (String item : yFola) {
+            int colon = item.indexOf(':');
+            if (colon > 0) FOLA.put(item.substring(0, colon), item.substring(colon + 1));
+        }
+
+        // ব-ফলা
+        String[] wFola = {
+                "ক্ব:kw", "গ্ব:gw", "ঘ্ব:ghw", "চ্ব:chw", "জ্ব:jw",
+                "ত্ব:tw", "থ্ব:thw", "দ্ব:dw", "ধ্ব:dhw", "ন্ব:nw",
+                "প্ব:pw", "ফ্ব:fw", "ব্ব:bw", "ভ্ব:bhw", "ম্ব:mw",
+                "ল্ব:lw", "শ্ব:shw", "ষ্ব:shw", "স্ব:sw", "হ্ব:hw"
+        };
+        for (String item : wFola) {
+            int colon = item.indexOf(':');
+            if (colon > 0) FOLA.put(item.substring(0, colon), item.substring(colon + 1));
+        }
+
+        // ম-ফলা
+        String[] mFola = {
+                "ক্ম:km", "গ্ম:gm", "ঘ্ম:ghm", "ত্ম:tm", "দ্ম:dm",
+                "ধ্ম:dhm", "ন্ম:nm", "প্ম:pm", "ব্ম:bm", "ভ্ম:bhm",
+                "ল্ম:lm", "শ্ম:shm", "ষ্ম:shm", "স্ম:sm", "হ্ম:hm"
+        };
+        for (String item : mFola) {
+            int colon = item.indexOf(':');
+            if (colon > 0) FOLA.put(item.substring(0, colon), item.substring(colon + 1));
+        }
     }
 
     /* ====================================== INITIALIZE PREFIX RULES ====================================== */
@@ -662,6 +770,15 @@ public final class BanglaToBanglishConverter {
 
     /* ====================================== CONTEXT HELPERS ====================================== */
 
+    private static boolean isBengaliConsonantAt(String word, int index) {
+        if (index < 0 || index >= word.length()) return false;
+        String nukta = findNuktaConsonant(word, index);
+        if (nukta != null) return true;
+        return CONSONANTS.containsKey(word.charAt(index));
+    }
+
+
+
     /**
      * Returns true when the current consonant is the final pronounced consonant
      * of the word/segment. A final inherent vowel is normally NOT written in
@@ -680,6 +797,15 @@ public final class BanglaToBanglishConverter {
         return false;
     }
 
+
+    private static String findLongestFola(String word, int start) {
+        int maxLen = Math.min(3, word.length() - start);
+        for (int len = maxLen; len >= 3; len--) {
+            String sub = word.substring(start, start + len);
+            if (FOLA.containsKey(sub)) return sub;
+        }
+        return null;
+    }
 
     /**
      * Handles common Bengali phala forms when a conjunct is not explicitly listed
@@ -745,7 +871,27 @@ public final class BanglaToBanglishConverter {
                 continue;
             }
 
-            // 2) Generic fola fallback: C + hasanta + র/য/ব/ম.
+            // 2) Specialized phala rules before generic fallback.
+            String folaMatch = findLongestFola(word, i);
+            if (folaMatch != null) {
+                sb.append(FOLA.get(folaMatch));
+                i += folaMatch.length();
+                if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
+                    sb.append(naturalSign(VOWEL_SIGNS.get(word.charAt(i))));
+                    i++;
+                } else if (i < len && word.charAt(i) == HASANTA) {
+                    i++;
+                } else if (i < len && isBengaliConsonantAt(word, i)) {
+                    // The following consonant owns its own inherent vowel;
+                    // do not insert an extra vowel after the phala.
+                } else if (i >= len) {
+                    // A final phala may carry an inherent vowel in natural typing.
+                    sb.append("o");
+                }
+                continue;
+            }
+
+            // Generic fola fallback: C + hasanta + র/য/ব/ম.
             int folaEnd = consumeGenericFola(word, i, sb);
             if (folaEnd >= 0) {
                 i = folaEnd;
@@ -754,7 +900,7 @@ public final class BanglaToBanglishConverter {
                     i++;
                 } else if (i < len && word.charAt(i) == HASANTA) {
                     i++;
-                } else if (i < len) {
+                } else if (i >= len) {
                     sb.append("o");
                 }
                 continue;
