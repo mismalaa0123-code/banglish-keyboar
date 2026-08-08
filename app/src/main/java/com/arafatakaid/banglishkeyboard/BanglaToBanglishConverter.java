@@ -20,13 +20,14 @@ import java.util.LinkedHashMap;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 
 /**
  * =====================================================
  * BanglaToBanglishConverter
- * Version : 4.0 STEP-7 (Unicode Robustness)
+ * Version : 4.0 STEP-13 (Performance + Safety + Final Self Test)
  * Author  : Arafat Akaid
  * =====================================================
  */
@@ -72,6 +73,13 @@ public final class BanglaToBanglishConverter {
     private static final Map<String,String> PHRASE_DICTIONARY = new ConcurrentHashMap<>(2048);
     private static volatile int MAX_PHRASE_WORDS = 1;
 
+    // STEP-11: dictionary loading state. The converter may be called on every
+    // keystroke, so the same asset must never be parsed repeatedly. Explicit
+    // calls to loadDictionaryFromAssets() can still reload/replace the data.
+    private static final Object DICTIONARY_LOCK = new Object();
+    private static final AtomicBoolean DICTIONARY_LOADING = new AtomicBoolean(false);
+    private static volatile String LOADED_DICTIONARY_FILE = null;
+
     // Single-codepoint consonants (safe as char literals)
     private static final Map<Character,String> CONSONANTS = new HashMap<>();
 
@@ -100,7 +108,7 @@ public final class BanglaToBanglishConverter {
                     + "|(www\\.\\S+)"
                     + "|([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[A-Za-z]{2,})"
                     + "|(@\\w+)"
-                    + "|(#[\\w\\u0980-\\u09FF]+)"
+                    + "|(#[A-Za-z0-9_]+)"
     );
 
     private static final Pattern WORD_PATTERN = Pattern.compile("[\\u0980-\\u09FF]+");
@@ -692,54 +700,86 @@ public final class BanglaToBanglishConverter {
     public static void addDictionaryWord(String bangla, String banglish) {
         if (bangla == null || banglish == null) return;
         bangla = cleanUnicode(Normalizer.normalize(bangla, Normalizer.Form.NFC));
-        DICTIONARY.put(bangla.trim(), banglish.trim());
-        rebuildPhraseEntry(bangla.trim(), banglish.trim());
-        CACHE.remove(bangla);
+        String key = bangla.trim();
+        String value = banglish.trim();
+        DICTIONARY.put(key, value);
+        rebuildPhraseEntry(key, value);
+        CACHE.remove(key);
     }
 
     public static void removeDictionaryWord(String bangla) {
         if (bangla == null) return;
-        DICTIONARY.remove(cleanUnicode(bangla));
-        CACHE.remove(bangla);
+        String key = cleanUnicode(bangla);
+        DICTIONARY.remove(key);
+        PHRASE_DICTIONARY.remove(key);
+        CACHE.remove(key);
     }
 
     public static void clearDictionary() {
         DICTIONARY.clear();
         PHRASE_DICTIONARY.clear();
         MAX_PHRASE_WORDS = 1;
+        LOADED_DICTIONARY_FILE = null;
         CACHE.clear();
     }
 
     /* ====================================== LOAD DICTIONARY ====================================== */
+    /**
+     * Loads an asset dictionary once for a given filename. Calling this method
+     * repeatedly is safe: after a successful load, subsequent calls for the
+     * same filename return immediately. A different filename intentionally
+     * reloads the dictionary.
+     */
     public static void loadDictionaryFromAssets(Context context, String fileName) {
-        if (context == null || fileName == null) return;
+        if (context == null || fileName == null || fileName.trim().isEmpty()) return;
 
-        try {
-            InputStream is = context.getAssets().open(fileName);
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+        String requested = fileName.trim();
+        if (requested.equals(LOADED_DICTIONARY_FILE) && !DICTIONARY.isEmpty()) return;
 
-            StringBuilder builder = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                builder.append(line);
+        synchronized (DICTIONARY_LOCK) {
+            if (requested.equals(LOADED_DICTIONARY_FILE) && !DICTIONARY.isEmpty()) return;
+            if (!DICTIONARY_LOADING.compareAndSet(false, true)) return;
+
+            try (InputStream is = context.getAssets().open(requested);
+                 BufferedReader reader = new BufferedReader(
+                         new InputStreamReader(is, StandardCharsets.UTF_8))) {
+
+                StringBuilder builder = new StringBuilder(32768);
+                String line;
+                while ((line = reader.readLine()) != null) builder.append(line);
+
+                JSONObject object = new JSONObject(builder.toString());
+
+                // Build into temporary maps first. This prevents a failed JSON
+                // parse from leaving the live dictionary half-populated.
+                Map<String,String> loaded = new HashMap<>(Math.max(16, object.length() * 2));
+                Iterator<String> keys = object.keys();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    String value = object.optString(key, null);
+                    if (value == null) continue;
+                    String normalizedKey = cleanUnicode(key).trim();
+                    if (normalizedKey.isEmpty()) continue;
+                    loaded.put(normalizedKey, value.trim());
+                }
+
+                DICTIONARY.clear();
+                PHRASE_DICTIONARY.clear();
+                MAX_PHRASE_WORDS = 1;
+                DICTIONARY.putAll(loaded);
+                for (Map.Entry<String,String> e : loaded.entrySet()) {
+                    rebuildPhraseEntry(e.getKey(), e.getValue());
+                }
+
+                CACHE.clear();
+                LOADED_DICTIONARY_FILE = requested;
+                log("Dictionary loaded once: " + requested + " (" + loaded.size() + " entries)");
+
+            } catch (IOException | JSONException | RuntimeException e) {
+                Log.e(TAG, "Dictionary Load Failed: " + requested, e);
+            } finally {
+                DICTIONARY_LOADING.set(false);
             }
-            reader.close();
-
-            JSONObject object = new JSONObject(builder.toString());
-            Iterator<String> keys = object.keys();
-
-            while (keys.hasNext()) {
-                String key = keys.next();
-                String normalizedKey = cleanUnicode(key);
-                String value = object.getString(key);
-                DICTIONARY.put(normalizedKey, value);
-                rebuildPhraseEntry(normalizedKey, value);
-            }
-
-            CACHE.clear();
-
-        } catch (IOException | JSONException e) {
-            Log.e(TAG, "Dictionary Load Failed", e);
         }
     }
 
@@ -865,6 +905,18 @@ public final class BanglaToBanglishConverter {
      * Only whitespace-separated Bengali words are joined; punctuation and
      * English text remain untouched.
      */
+    /** Convert Bengali digits in ordinary text while leaving English text and punctuation unchanged. */
+    private static String convertBengaliDigitsInGap(String text) {
+        if (text == null || text.isEmpty() || !convertDigits) return text;
+        StringBuilder out = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            Character mapped = DIGITS.get(c);
+            out.append(mapped != null ? mapped : c);
+        }
+        return out.toString();
+    }
+
     private static String processGapWithPhrases(String gap) {
         if (gap == null || gap.isEmpty() || PHRASE_DICTIONARY.isEmpty()) {
             return processGapWordsOnly(gap);
@@ -931,7 +983,7 @@ public final class BanglaToBanglishConverter {
         }
 
         out.append(gap.substring(cursor));
-        return out.toString();
+        return convertBengaliDigitsInGap(out.toString());
     }
 
     private static String processGapWordsOnly(String gap) {
@@ -945,7 +997,7 @@ public final class BanglaToBanglishConverter {
             last = wordMatcher.end();
         }
         sb.append(gap.substring(last));
-        return sb.toString();
+        return convertBengaliDigitsInGap(sb.toString());
     }
 
     /* ====================================== LONGEST JOINT MATCH ====================================== */
@@ -1299,65 +1351,221 @@ public final class BanglaToBanglishConverter {
         return sb.toString();
     }
 
+    /* ====================================== RULE PRIORITY (STEP-9) ====================================== */
+
+    /**
+     * Step-9 rule priority is intentionally centralized here so that a weaker
+     * morphological rule can never overwrite a stronger exact match.
+     *
+     * Priority:
+     *   1) exact dictionary
+     *   2) exact exception
+     *   3) known verb rule
+     *   4) prefix/suffix morphology
+     *   5) conjunct/fola/vowel core transliteration
+     *   6) final general fallback
+     *
+     * The helper is kept small because phrase matching is already handled
+     * before processWord().
+     */
+    private static String lookupExactDictionaryOnly(String word) {
+        if (word == null || word.isEmpty()) return null;
+        String value = DICTIONARY.get(word);
+        if (value != null) {
+            CACHE.put(word, value);
+            return value;
+        }
+        return null;
+    }
+
+    private static String lookupExactExceptionOnly(String word) {
+        if (word == null || word.isEmpty()) return null;
+        String value = EXCEPTION.get(word);
+        if (value != null) {
+            CACHE.put(word, value);
+            return value;
+        }
+        return null;
+    }
+
+    /** Returns true when a word contains characters that should never be sent
+     * through Bengali morphological prefix/suffix rules. */
+    private static boolean isProtectedWord(String word) {
+        if (word == null || word.isEmpty()) return true;
+        // English letters, digits, email/URL-like punctuation, or mixed-script
+        // tokens should not be morphologically split. Bengali-only words are
+        // safe candidates for the linguistic rules.
+        for (int i = 0; i < word.length();) {
+            int cp = word.codePointAt(i);
+            if ((cp >= 'A' && cp <= 'Z') || (cp >= 'a' && cp <= 'z') ||
+                    (cp >= '0' && cp <= '9')) return true;
+            i += Character.charCount(cp);
+        }
+        return false;
+    }
+
+
+    /* ====================================== WRONG-CORRECTION PROTECTION (STEP-10) ====================================== */
+
+    /**
+     * Returns true when the token is entirely Bengali (including Bengali combining
+     * marks). Morphological rules are only allowed on such tokens.
+     */
+    private static boolean isBengaliOnlyToken(String word) {
+        if (word == null || word.isEmpty()) return false;
+        boolean hasBengali = false;
+        for (int i = 0; i < word.length();) {
+            int cp = word.codePointAt(i);
+            if (cp >= 0x0980 && cp <= 0x09FF) {
+                hasBengali = true;
+            } else if (Character.isWhitespace(cp) || Character.getType(cp) == Character.NON_SPACING_MARK
+                    || Character.getType(cp) == Character.COMBINING_SPACING_MARK
+                    || Character.getType(cp) == Character.ENCLOSING_MARK) {
+                // Allowed only as part of a Bengali token; processWord normally has
+                // no whitespace, while combining marks may occur in Bengali text.
+            } else {
+                return false;
+            }
+            i += Character.charCount(cp);
+        }
+        return hasBengali;
+    }
+
+    /**
+     * Rejects a morphology result when it looks like the rule accidentally
+     * deleted most of the user's token. Exact dictionary/exception results are
+     * never passed through this check.
+     */
+    private static boolean isSafeCorrection(String original, String candidate, String raw) {
+        if (original == null || original.isEmpty()) return false;
+        if (candidate == null || candidate.isEmpty()) return false;
+        if (raw == null || raw.isEmpty()) return false;
+
+        // Never allow a morphology rule to erase the token completely.
+        if (candidate.length() < 2 && original.length() >= 4) return false;
+
+        // A productive correction should not be dramatically shorter than the
+        // ordinary transliteration unless it is an explicit dictionary/exception.
+        // This catches accidental prefix/suffix over-stripping.
+        int minAllowed = Math.max(2, raw.length() / 3);
+        if (candidate.length() < minAllowed) return false;
+
+        return true;
+    }
+
+    /**
+     * Protects user text from repeated linguistic rewriting. Banglish output
+     * contains no Bengali code points, so passing an already-converted token
+     * through this converter should leave it unchanged.
+     */
+    private static boolean isAlreadyBanglishToken(String word) {
+        if (word == null || word.isEmpty()) return false;
+        return !hasBengaliCodePoint(word);
+    }
+
     /* ====================================== PROCESS WORD ====================================== */
+
     private static String processWord(String word) {
         if (word == null || word.isEmpty()) return word;
 
         String cleaned = cleanUnicode(word);
+        if (cleaned.isEmpty()) return cleaned;
 
-        // Exact dictionary/exception always wins. This is the safest path for
-        // natural Banglish spellings and irregular pronunciations.
-        String direct = lookupDictionary(cleaned);
-        if (direct != null) return direct;
-
-        // Step-6 productive verb fallback. Exact dictionary/exception remains
-        // higher priority, while only known roots can trigger this rule.
-        String verb = applyVerbRule(cleaned);
-        if (verb != null) {
-            CACHE.put(cleaned, verb);
-            return verb;
+        // STEP 10.1 — Never rewrite an already non-Bengali token. This makes the
+        // converter safe for mixed text and repeated conversion.
+        if (isAlreadyBanglishToken(cleaned)) {
+            return cleaned;
         }
+
+        // STEP 10.2 — Cache only complete tokens.
+        String cached = CACHE.get(cleaned);
+        if (cached != null) return cached;
+
+        // STEP 10.3 — Exact dictionary and exception remain authoritative.
+        String directDictionary = lookupExactDictionaryOnly(cleaned);
+        if (directDictionary != null) return directDictionary;
+
+        String directException = lookupExactExceptionOnly(cleaned);
+        if (directException != null) return directException;
+
+        // STEP 10.4 — Morphological rules are allowed only for Bengali-only
+        // tokens. Mixed/foreign tokens go directly to the safe scanner.
+        boolean bengaliOnly = isBengaliOnlyToken(cleaned);
+        boolean protectedToken = isProtectedWord(cleaned) || !bengaliOnly;
+
+        // STEP 10.5 — Verb fallback is deliberately conservative.
+        if (!protectedToken) {
+            String verb = applyVerbRule(cleaned);
+            if (verb != null && !verb.isEmpty()) {
+                CACHE.put(cleaned, verb);
+                return verb;
+            }
+        }
+
+        // STEP 10.6 — Always compute a baseline transliteration first. If a
+        // prefix/suffix rule later produces a suspicious result, we can safely
+        // return this baseline instead of deleting/changing user text.
+        String rawBaseline = transliterateCore(cleaned);
+        if (rawBaseline.isEmpty()) rawBaseline = cleaned;
 
         String remaining = cleaned;
         StringBuilder prefixOut = new StringBuilder();
         String suffixOut = "";
 
-        // Prefix matching is conservative: only use it when a meaningful core
-        // remains, otherwise it can corrupt short/common words.
-        String prefixMatch = null;
-        for (Map.Entry<String, String> e : PREFIX.entrySet()) {
-            String key = e.getKey();
-            if (remaining.startsWith(key) && remaining.length() - key.length() >= 2) {
-                if (prefixMatch == null || key.length() > prefixMatch.length()) {
-                    prefixMatch = key;
+        if (!protectedToken) {
+            // Longest prefix wins.
+            String prefixMatch = null;
+            for (Map.Entry<String, String> e : PREFIX.entrySet()) {
+                String key = e.getKey();
+                if (remaining.startsWith(key) && remaining.length() - key.length() >= 2) {
+                    if (prefixMatch == null || key.length() > prefixMatch.length()) {
+                        prefixMatch = key;
+                    }
                 }
             }
-        }
-        if (prefixMatch != null) {
-            prefixOut.append(PREFIX.get(prefixMatch));
-            remaining = remaining.substring(prefixMatch.length());
-        }
+            if (prefixMatch != null) {
+                String mapped = PREFIX.get(prefixMatch);
+                if (mapped != null && !mapped.isEmpty()) {
+                    prefixOut.append(mapped);
+                    remaining = remaining.substring(prefixMatch.length());
+                }
+            }
 
-        // Suffix matching is also conservative. Very short cores are left to
-        // the transliteration engine instead of forcing a morphological split.
-        String suffixMatch = null;
-        for (Map.Entry<String, String> e : SUFFIX.entrySet()) {
-            String key = e.getKey();
-            if (remaining.endsWith(key) && remaining.length() - key.length() >= 2) {
-                if (suffixMatch == null || key.length() > suffixMatch.length()) {
-                    suffixMatch = key;
+            // Longest suffix wins.
+            String suffixMatch = null;
+            for (Map.Entry<String, String> e : SUFFIX.entrySet()) {
+                String key = e.getKey();
+                if (remaining.endsWith(key) && remaining.length() - key.length() >= 2) {
+                    if (suffixMatch == null || key.length() > suffixMatch.length()) {
+                        suffixMatch = key;
+                    }
                 }
             }
-        }
-        if (suffixMatch != null) {
-            suffixOut = SUFFIX.get(suffixMatch);
-            remaining = remaining.substring(0, remaining.length() - suffixMatch.length());
+            if (suffixMatch != null) {
+                String mapped = SUFFIX.get(suffixMatch);
+                if (mapped != null && !mapped.isEmpty()) {
+                    suffixOut = mapped;
+                    remaining = remaining.substring(0, remaining.length() - suffixMatch.length());
+                }
+            }
         }
 
         String core = transliterateCore(remaining);
         String result = prefixOut.toString() + core + suffixOut;
 
-        if (result.isEmpty()) result = transliterateCore(cleaned);
+        // STEP 10.7 — Wrong-correction protection. If morphology produced an
+        // empty or suspiciously destructive result, use the untouched baseline.
+        if (!isSafeCorrection(cleaned, result, rawBaseline)) {
+            result = rawBaseline;
+        }
+
+        // STEP 10.8 — Absolute fallback: never delete non-empty user input.
+        if (result == null || result.isEmpty()) {
+            result = rawBaseline;
+        }
+        if (result == null || result.isEmpty()) {
+            result = cleaned;
+        }
 
         CACHE.put(cleaned, result);
         return result;
@@ -1372,18 +1580,19 @@ public final class BanglaToBanglishConverter {
     public static String processSentence(String text) {
         if (text == null || text.isEmpty()) return "";
 
-        StringBuilder result = new StringBuilder();
+        StringBuilder result = new StringBuilder(text.length() + 16);
         Matcher preserveMatcher = PRESERVE_PATTERN.matcher(text);
         int lastEnd = 0;
 
         while (preserveMatcher.find()) {
-            String gap = text.substring(lastEnd, preserveMatcher.start());
-            result.append(processGap(gap));
+            if (preserveMatcher.start() > lastEnd) {
+                result.append(processGap(text.substring(lastEnd, preserveMatcher.start())));
+            }
             result.append(preserveMatcher.group());
             lastEnd = preserveMatcher.end();
         }
 
-        result.append(processGap(text.substring(lastEnd)));
+        if (lastEnd < text.length()) result.append(processGap(text.substring(lastEnd)));
         return result.toString();
     }
 
@@ -1391,12 +1600,126 @@ public final class BanglaToBanglishConverter {
     public static String convert(String text) {
         if (text == null || text.isEmpty()) return "";
 
-        String cleaned = cleanUnicode(text);
-        log("Converting: " + cleaned);
+        try {
+            String cleaned = cleanUnicode(text);
+            if (cleaned.isEmpty()) return "";
 
-        String result = processSentence(cleaned);
-        log("Result: " + result);
+            // STEP-11: fast path for text that contains no Bengali. This avoids
+            // regex/token work when the keyboard receives English-only input.
+            if (!hasBengaliCodePoint(cleaned)) {
+                return convertBengaliDigitsInGap(cleaned);
+            }
 
-        return result;
+            String result = processSentence(cleaned);
+            if (result == null || result.isEmpty()) return cleaned;
+
+            log("Result: " + result);
+            return result;
+        } catch (RuntimeException e) {
+            // STEP-12: the keyboard must never crash because of a malformed
+            // token or an unexpected rule interaction. Returning normalized
+            // input is safer than losing the user's text.
+            Log.e(TAG, "Conversion failed; returning safe input", e);
+            return cleanUnicode(text);
+        }
+    }
+
+    /* ====================================== STEP-11/12 STATUS ====================================== */
+    public static boolean isDictionaryLoaded() {
+        return LOADED_DICTIONARY_FILE != null && !DICTIONARY.isEmpty();
+    }
+
+    public static String getLoadedDictionaryFile() {
+        return LOADED_DICTIONARY_FILE;
+    }
+
+    public static int getDictionarySize() {
+        return DICTIONARY.size();
+    }
+
+    public static int getCacheSize() {
+        synchronized (CACHE) {
+            return CACHE.size();
+        }
+    }
+
+    /* ====================================== STEP-13 FINAL SELF TEST ====================================== */
+    /**
+     * Lightweight production-safe self test. It does not change dictionary data
+     * and is never executed automatically. Call it manually from a debug screen
+     * or test harness when you want a quick health check.
+     *
+     * Format: PASS/FAIL lines followed by a summary.
+     */
+    public static String runSelfTest() {
+        StringBuilder report = new StringBuilder(2048);
+        int total = 0;
+        int passed = 0;
+
+        String[][] exact = {
+                {"আমি", "ami"},
+                {"বাংলা", "bangla"},
+                {"বাংলাদেশ", "bangladesh"},
+                {"স্বাধীনতা", "swadhinota"},
+                {"ঔষধ", "oshudh"},
+                {"ওষুধ", "oshudh"},
+                {"দায়িত্ব", "dayitto"},
+                {"বিজ্ঞান", "biggan"},
+                {"জ্ঞান", "gyan"},
+                {"বিজয়নগর", "bijoynogor"},
+                {"ঢাকা", "dhaka"}
+        };
+
+        for (String[] test : exact) {
+            total++;
+            String actual = convert(test[0]);
+            boolean ok = test[1].equals(actual);
+            if (ok) passed++;
+            report.append(ok ? "PASS" : "FAIL")
+                    .append(" | ").append(test[0])
+                    .append(" -> ").append(actual)
+                    .append(" | expected=").append(test[1]).append('\n');
+        }
+
+        String[][] safety = {
+                {"Hello world 123", "Hello world 123"},
+                {"https://example.com", "https://example.com"},
+                {"test@example.com", "test@example.com"},
+                {"@username", "@username"},
+                {"#Bangladesh", "#Bangladesh"},
+                {"১২৩৪৫", "12345"}
+        };
+
+        for (String[] test : safety) {
+            total++;
+            String actual = convert(test[0]);
+            boolean ok = test[1].equals(actual);
+            if (ok) passed++;
+            report.append(ok ? "PASS" : "FAIL")
+                    .append(" | ").append(test[0])
+                    .append(" -> ").append(actual)
+                    .append(" | expected=").append(test[1]).append('\n');
+        }
+
+        String nullResult = convert(null);
+        total++;
+        boolean nullOk = "".equals(nullResult);
+        if (nullOk) passed++;
+        report.append(nullOk ? "PASS" : "FAIL")
+                .append(" | null -> ").append(nullResult).append('\n');
+
+        String stableInput = "স্বাধীনতা";
+        String once = convert(stableInput);
+        String twice = convert(once);
+        total++;
+        boolean stableOk = once.equals(twice);
+        if (stableOk) passed++;
+        report.append(stableOk ? "PASS" : "FAIL")
+                .append(" | idempotence | ").append(once)
+                .append(" -> ").append(twice).append('\n');
+
+        report.append("SUMMARY: ").append(passed).append('/').append(total)
+                .append(" tests passed");
+        return report.toString();
     }
 }
