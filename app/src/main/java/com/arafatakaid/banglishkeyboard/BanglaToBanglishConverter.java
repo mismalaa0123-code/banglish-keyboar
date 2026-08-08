@@ -26,7 +26,7 @@ import java.util.regex.Matcher;
 /**
  * =====================================================
  * BanglaToBanglishConverter
- * Version : 4.0 STEP-5 (Vowel + Inherent Vowel Engine)
+ * Version : 4.0 STEP-6 (Verb Inflection Engine)
  * Author  : Arafat Akaid
  * =====================================================
  */
@@ -61,6 +61,11 @@ public final class BanglaToBanglishConverter {
 
     private static final Map<String,String> DICTIONARY = new ConcurrentHashMap<>(65536);
     private static final Map<String,String> EXCEPTION = new ConcurrentHashMap<>(4096);
+
+    // Common Bengali verb roots used for productive inflection fallback.
+    // Exact dictionary/exception matches still have higher priority.
+    private static final Map<String,String> VERB_ROOTS = new ConcurrentHashMap<>(256);
+    private static final Map<String,String> VERB_SUFFIXES = new LinkedHashMap<>();
 
     // Multi-word dictionary entries, e.g. "ভালো আছি". Kept separate so
     // sentence conversion can match phrases before converting individual words.
@@ -111,6 +116,7 @@ public final class BanglaToBanglishConverter {
         initializePrefixRules();
         initializeSuffixRules();
         initializeExceptionDictionary();
+        initializeVerbRules();
     }
 
     /* ====================================== INITIALIZE VOWELS ====================================== */
@@ -528,6 +534,100 @@ public final class BanglaToBanglishConverter {
         EXCEPTION.put("বরিশাল", "barishal");
         EXCEPTION.put("রংপুর", "rangpur");
         EXCEPTION.put("ময়মনসিংহ", "mymensingh");
+    }
+
+    /* ====================================== COMMON VERB RULES (STEP-6) ====================================== */
+    private static void initializeVerbRules() {
+        // High-frequency roots. Values are the natural Banglish stem.
+        String[][] roots = {
+                {"কর","kor"},{"হও","ho"},{"যা","ja"},{"আস","as"},{"খা","kha"},
+                {"দে","de"},{"নে","ne"},{"পা","pa"},{"দেখ","dekh"},{"শুন","shun"},
+                {"বল","bol"},{"লিখ","likh"},{"পড়","por"},{"পড়","por"},{"খেল","khel"},
+                {"গেল","gel"},{"যাচ","jac"},{"থাক","thak"},{"রাখ","rakh"},{"নেও","neo"},
+                {"দাও","dao"},{"পড়া","pora"},{"পড়া","pora"},{"শেখ","shekh"},{"শিখ","shikh"},
+                {"জান","jan"},{"মান","man"},{"চিন","chin"},{"ভালবাস","bhalobash"},{"বাস","bash"},
+                {"চল","chol"},{"ফির","fir"},{"উঠ","uth"},{"বস","bosh"},{"ঘুমা","ghuma"},
+                {"হাস","hash"},{"কাঁদ","kand"},{"কাঁদা","kanda"},{"নাচ","nach"},{"গান গা","gan ga"},
+                {"জিজ্ঞাসা কর","jiggasha kor"},{"বোঝ","bojh"},{"বুঝ","bujh"},{"ভুল","bhul"},{"শুরু কর","shuru kor"},
+                {"শেষ কর","shesh kor"},{"চাই","chai"},{"পছন্দ কর","pochondo kor"},{"ভয় পা","bhoy pa"},
+                {"মারা","mara"},{"মর","mor"},{"বাঁচ","bach"},{"বাঁচা","bacha"},{"জিত","jit"},
+                {"হার","har"},{"কিন","kin"},{"বেচ","bech"},{"পাঠা","patha"},{"পড়া","pora"},
+                {"শো","sho"},{"দৌড়া","doura"},{"দৌড়া","doura"},{"উড়","ur"},{"উড়া","ura"},
+                {"ধর","dhor"},{"ছাড়","chhar"},{"ছাড়","chhar"},{"ছুঁ","chhu"},{"ছু","chhu"},
+                {"খুঁজ","khoj"},{"খোজ","khoj"},{"তুল","tul"},{"ফেল","fel"},{"দাঁড়া","dara"},
+                {"দাঁড়া","dara"},{"লাগ","lag"},{"জ্বাল","jwal"},{"নিভ","nibh"},{"খোল","khol"},
+                {"বন্ধ কর","bondho kor"},{"চালু কর","chalu kor"},{"তৈরি কর","toiri kor"},{"ব্যবহার কর","byabohar kor"}
+        };
+        for (String[] r : roots) VERB_ROOTS.put(r[0], r[1]);
+
+        // Productive endings. These are applied only when the remaining stem
+        // is a known verb root, so ordinary nouns are not rewritten accidentally.
+        VERB_SUFFIXES.put("চ্ছিলাম", "chchilam");
+        VERB_SUFFIXES.put("চ্ছিলে", "chchile");
+        VERB_SUFFIXES.put("চ্ছিলেন", "chchilen");
+        VERB_SUFFIXES.put("চ্ছিল", "chchhil");
+        VERB_SUFFIXES.put("চ্ছি", "cchi");
+        VERB_SUFFIXES.put("চ্ছিস", "cchis");
+        VERB_SUFFIXES.put("চ্ছেন", "cchen");
+        VERB_SUFFIXES.put("ছিলাম", "chilam");
+        VERB_SUFFIXES.put("ছিলে", "chile");
+        VERB_SUFFIXES.put("ছিলেন", "chilen");
+        VERB_SUFFIXES.put("ছিল", "chhil");
+        VERB_SUFFIXES.put("ছি", "chi");
+        VERB_SUFFIXES.put("ছিস", "chis");
+        VERB_SUFFIXES.put("ছেন", "chen");
+        VERB_SUFFIXES.put("েছিলাম", "echilam");
+        VERB_SUFFIXES.put("েছিলে", "echile");
+        VERB_SUFFIXES.put("েছিলেন", "echilen");
+        VERB_SUFFIXES.put("েছিল", "echhil");
+        VERB_SUFFIXES.put("েছি", "echi");
+        VERB_SUFFIXES.put("েছিস", "echis");
+        VERB_SUFFIXES.put("েছেন", "echen");
+        VERB_SUFFIXES.put("েবে", "ebe");
+        VERB_SUFFIXES.put("েবেন", "eben");
+        VERB_SUFFIXES.put("বে", "be");
+        VERB_SUFFIXES.put("বেন", "ben");
+        VERB_SUFFIXES.put("ব", "bo");
+        VERB_SUFFIXES.put("বি", "bi");
+        VERB_SUFFIXES.put("বো", "bo");
+        VERB_SUFFIXES.put("লাম", "lam");
+        VERB_SUFFIXES.put("লে", "le");
+        VERB_SUFFIXES.put("লেন", "len");
+        VERB_SUFFIXES.put("ল", "l");
+        VERB_SUFFIXES.put("তে", "te");
+        VERB_SUFFIXES.put("িতে", "ite");
+        VERB_SUFFIXES.put("াতে", "ate");
+    }
+
+    private static String applyVerbRule(String word) {
+        if (word == null || word.isEmpty()) return null;
+
+        // Handle productive forms where Bengali orthography changes the root
+        // before -ছি/-ছিল- (e.g. কর + ছি -> করছি, খা + চ্ছি -> খাচ্ছি).
+        String[][] special = {
+                {"করছি","korchi"},{"করছিস","korchis"},{"করছেন","korchen"},
+                {"করছিলাম","korchilam"},{"করছিলে","korchile"},{"করছিলেন","korchilen"},{"করছিল","korchhil"},
+                {"খাচ্ছি","khacchi"},{"খাচ্ছিস","khacchis"},{"খাচ্ছেন","khacchen"},
+                {"খাচ্ছিলাম","khacchilam"},{"খাচ্ছিলে","khacchile"},{"খাচ্ছিলেন","khacchilen"},{"খাচ্ছিল","khacchhil"},
+                {"যাচ্ছি","jacchi"},{"যাচ্ছিস","jacchis"},{"যাচ্ছেন","jacchen"},
+                {"যাচ্ছিলাম","jacchilam"},{"যাচ্ছিলে","jacchile"},{"যাচ্ছিলেন","jacchilen"},{"যাচ্ছিল","jacchhil"},
+                {"আসছি","aschi"},{"আসছিস","aschis"},{"আসছেন","aschen"},{"আসছিলাম","aschilam"},{"আসছিল","aschhil"},
+                {"দিচ্ছি","dicchi"},{"দিচ্ছিস","dicchis"},{"দিচ্ছেন","dicchen"},{"দিচ্ছিলাম","dicchilam"},{"দিচ্ছিল","dicchhil"},
+                {"নিচ্ছি","nicchi"},{"নিচ্ছিস","nicchis"},{"নিচ্ছেন","nicchen"},{"নিচ্ছিলাম","nicchilam"},{"নিচ্ছিল","nicchhil"},
+                {"দেখছি","dekhchi"},{"দেখছিস","dekhchis"},{"দেখছেন","dekhchen"},{"দেখছিলাম","dekhchilam"},{"দেখছিল","dekhchhil"},
+                {"বলছি","bolchi"},{"বলছিস","bolchis"},{"বলছেন","bolchen"},{"বলছিলাম","bolchilam"},{"বলছিল","bolchhil"},
+                {"লিখছি","likhchi"},{"লিখছিস","likhchis"},{"লিখছেন","likhchen"},{"লিখছিলাম","likhchilam"},{"লিখছিল","likhchhil"}
+        };
+        for (String[] x : special) if (word.equals(x[0])) return x[1];
+
+        // Safe root + ending fallback for known roots only.
+        for (Map.Entry<String,String> root : VERB_ROOTS.entrySet()) {
+            if (!word.startsWith(root.getKey())) continue;
+            String tail = word.substring(root.getKey().length());
+            String tailOut = VERB_SUFFIXES.get(tail);
+            if (tailOut != null) return root.getValue() + tailOut;
+        }
+        return null;
     }
 
     /* ====================================== SETTINGS ====================================== */
@@ -1110,6 +1210,14 @@ public final class BanglaToBanglishConverter {
         // natural Banglish spellings and irregular pronunciations.
         String direct = lookupDictionary(cleaned);
         if (direct != null) return direct;
+
+        // Step-6 productive verb fallback. Exact dictionary/exception remains
+        // higher priority, while only known roots can trigger this rule.
+        String verb = applyVerbRule(cleaned);
+        if (verb != null) {
+            CACHE.put(cleaned, verb);
+            return verb;
+        }
 
         String remaining = cleaned;
         StringBuilder prefixOut = new StringBuilder();
