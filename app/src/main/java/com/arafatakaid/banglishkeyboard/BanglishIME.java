@@ -37,6 +37,9 @@ public class BanglishIME extends InputMethodService implements KeyboardView.OnKe
         super.onCreate();
         // DictionaryHelper ক্লাসের মাধ্যমে ডিকশনারি মেমোরিতে লোড করা হচ্ছে
         DictionaryHelper dh = DictionaryHelper.getInstance(this);
+        // Step 3: load the same dictionary into the converter so full phrases
+        // can be matched before individual-word fallback rules run.
+        BanglaToBanglishConverter.loadDictionaryFromAssets(this, "dictionary.json");
         // Debug: লোড হওয়া এন্ট্রির সংখ্যা লোগ করা
         try {
             int count = dh.getWordCount();
