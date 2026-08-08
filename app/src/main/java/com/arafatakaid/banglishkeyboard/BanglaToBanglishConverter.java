@@ -26,7 +26,7 @@ import java.util.regex.Matcher;
 /**
  * =====================================================
  * BanglaToBanglishConverter
- * Version : 3.2 (Fully Fixed - Java 17 / Android compatible)
+ * Version : 4.0 STEP-1 (Natural Banglish Core)
  * Author  : Arafat Akaid
  * =====================================================
  */
@@ -449,7 +449,7 @@ public final class BanglaToBanglishConverter {
 
     public static void removeDictionaryWord(String bangla) {
         if (bangla == null) return;
-        DICTIONARY.remove(bangla);
+        DICTIONARY.remove(cleanUnicode(bangla));
         CACHE.remove(bangla);
     }
 
@@ -534,34 +534,107 @@ public final class BanglaToBanglishConverter {
         return null;
     }
 
+    /* ====================================== CONTEXT HELPERS ====================================== */
+
+    /**
+     * Returns true when the current consonant is the final pronounced consonant
+     * of the word/segment. A final inherent vowel is normally NOT written in
+     * natural Banglish: কর -> kor, মন -> mon, দেশ -> desh.
+     */
+    private static boolean isWordFinalConsonant(String word, int nextIndex) {
+        if (nextIndex >= word.length()) return true;
+
+        char next = word.charAt(nextIndex);
+        // A vowel sign supplies the vowel explicitly.
+        if (VOWEL_SIGNS.containsKey(next)) return false;
+        // Hasanta means the consonant is closed and the next cluster continues.
+        if (next == HASANTA) return false;
+        // Nukta/combining marks belong to the current consonant.
+        if (next == NUKTA || next == CHANDRA) return false;
+        return false;
+    }
+
+
+    /**
+     * Handles common Bengali phala forms when a conjunct is not explicitly listed
+     * in JOINT. This is a fallback, not a replacement for word-level exceptions.
+     */
+    private static String genericFola(String word, int start) {
+        if (start + 2 >= word.length()) return null;
+        char base = word.charAt(start);
+        if (!CONSONANTS.containsKey(base) || word.charAt(start + 1) != HASANTA) return null;
+
+        char fola = word.charAt(start + 2);
+        String baseRoman = CONSONANTS.get(base);
+        if (fola == '\u09B0') return baseRoman + "r"; // র-ফলা
+        if (fola == '\u09AF') return baseRoman + "y"; // য-ফলা
+        if (fola == '\u09AC') return baseRoman + "w"; // ব-ফলা
+        if (fola == '\u09AE') return baseRoman + "m"; // ম-ফলা
+        return null;
+    }
+
+    /** Consume a generic fola and return the index after it, or -1. */
+    private static int consumeGenericFola(String word, int start, StringBuilder sb) {
+        String roman = genericFola(word, start);
+        if (roman == null) return -1;
+        sb.append(roman);
+        return start + 3;
+    }
+
+    /** Common pronunciation aliases for difficult signs in natural mode. */
+    private static String naturalSign(String value) {
+        if (currentStyle == Style.NATURAL) {
+            if ("ph".equals(value)) return "f";
+            if ("sh".equals(value)) return "sh";
+        }
+        return value;
+    }
+
     /* ====================================== CORE TRANSLITERATION ====================================== */
     private static String transliterateCore(String word) {
         if (word == null || word.isEmpty()) return "";
 
         StringBuilder sb = new StringBuilder();
         int i = 0;
-        int len = word.length();
+        final int len = word.length();
 
         while (i < len) {
-
-            // 1) Joint conjuncts (longest match first)
+            // 1) Longest explicit conjunct first.
             String jointMatch = findLongestJoint(word, i);
             if (jointMatch != null) {
                 sb.append(JOINT.get(jointMatch));
                 i += jointMatch.length();
 
                 if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
-                    sb.append(VOWEL_SIGNS.get(word.charAt(i)));
+                    sb.append(naturalSign(VOWEL_SIGNS.get(word.charAt(i))));
                     i++;
                 } else if (i < len && word.charAt(i) == HASANTA) {
-                    // conjunct continues, no vowel added
-                } else if (currentStyle == Style.NATURAL) {
+                    i++;
+                } else {
+                    // A closed conjunct at the end of a Bengali word often
+                    // carries a pronounced inherent vowel: প্রশ্ন -> proshno,
+                    // স্বপ্ন -> shopno, শক্ত -> shokto.
                     sb.append("o");
                 }
                 continue;
             }
 
-            // 2) Nukta consonants (ড়, ঢ়) - two codepoints
+            // 2) Generic fola fallback: C + hasanta + র/য/ব/ম.
+            int folaEnd = consumeGenericFola(word, i, sb);
+            if (folaEnd >= 0) {
+                i = folaEnd;
+                if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
+                    sb.append(naturalSign(VOWEL_SIGNS.get(word.charAt(i))));
+                    i++;
+                } else if (i < len && word.charAt(i) == HASANTA) {
+                    i++;
+                } else if (i < len) {
+                    sb.append("o");
+                }
+                continue;
+            }
+
+            // 3) Nukta consonants: ড় / ঢ়.
             String nuktaMatch = findNuktaConsonant(word, i);
             if (nuktaMatch != null) {
                 sb.append(NUKTA_CONSONANTS.get(nuktaMatch));
@@ -570,9 +643,9 @@ public final class BanglaToBanglishConverter {
                 if (i < len && word.charAt(i) == HASANTA) {
                     i++;
                 } else if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
-                    sb.append(VOWEL_SIGNS.get(word.charAt(i)));
+                    sb.append(naturalSign(VOWEL_SIGNS.get(word.charAt(i))));
                     i++;
-                } else if (currentStyle == Style.NATURAL) {
+                } else if (i < len) {
                     sb.append("o");
                 }
                 continue;
@@ -580,55 +653,120 @@ public final class BanglaToBanglishConverter {
 
             char c = word.charAt(i);
 
+            // 4) Reph: র্ before another consonant.
+            if (c == '\u09B0' && i + 1 < len && word.charAt(i + 1) == HASANTA) {
+                if (i + 2 < len) {
+                    sb.append("r");
+                    i += 2;
+                    continue;
+                }
+            }
+
+            // 5) Hasanta itself: no vowel.
             if (c == HASANTA) {
                 i++;
                 continue;
             }
 
+            // 6) Consonants.
             if (CONSONANTS.containsKey(c)) {
-                sb.append(CONSONANTS.get(c));
+                String roman = CONSONANTS.get(c);
+
+                // Generic two-consonant conjunct fallback. This covers clusters
+                // not explicitly listed in JOINT, e.g. স্বপ্ন -> swopno.
+                if (i + 2 < len && word.charAt(i + 1) == HASANTA) {
+                    char nextConsonant = word.charAt(i + 2);
+                    if (CONSONANTS.containsKey(nextConsonant)) {
+                        String nextRoman = CONSONANTS.get(nextConsonant);
+                        if (nextConsonant == '\u09AF') nextRoman = "y";
+                        else if (nextConsonant == '\u09AC') nextRoman = "w";
+                        else if (nextConsonant == '\u09AE') nextRoman = "m";
+                        else if (nextConsonant == '\u09B0') nextRoman = "r";
+                        sb.append(naturalSign(roman)).append(naturalSign(nextRoman));
+                        i += 3;
+                        if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
+                            sb.append(naturalSign(VOWEL_SIGNS.get(word.charAt(i))));
+                            i++;
+                        } else {
+                            sb.append("o");
+                        }
+                        continue;
+                    }
+                }
+                // য is usually typed as "j" initially (যে -> je), but after a
+                // vowel it behaves like the semivowel "y" (ক্রিয়া -> kriya).
+                if (c == '\u09AF' && i > 0) {
+                    char prev = word.charAt(i - 1);
+                    if (VOWEL_SIGNS.containsKey(prev) || VOWELS.containsKey(prev)) {
+                        roman = "y";
+                    }
+                }
+                sb.append(naturalSign(roman));
                 i++;
 
+                if (i < len && word.charAt(i) == NUKTA) {
+                    i++;
+                }
+
                 if (i < len && word.charAt(i) == HASANTA) {
+                    // If the following character is a known fola, let the next
+                    // iteration consume the full fola; otherwise simply close it.
+                    if (i + 1 < len) {
+                        char next = word.charAt(i + 1);
+                        if (next == '\u09B0' || next == '\u09AF' || next == '\u09AC' || next == '\u09AE') {
+                            // Keep hasanta for genericFola by rewinding one unit.
+                            i--;
+                            continue;
+                        }
+                    }
                     i++;
                 } else if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
-                    sb.append(VOWEL_SIGNS.get(word.charAt(i)));
+                    sb.append(naturalSign(VOWEL_SIGNS.get(word.charAt(i))));
                     i++;
-                } else if (currentStyle == Style.NATURAL) {
+                } else if (i < len) {
                     sb.append("o");
                 }
                 continue;
             }
 
+            // 7) Independent vowels.
             if (VOWELS.containsKey(c)) {
                 sb.append(VOWELS.get(c));
                 i++;
                 continue;
             }
 
+            // 8) Standalone vowel signs (defensive fallback).
             if (VOWEL_SIGNS.containsKey(c)) {
-                sb.append(VOWEL_SIGNS.get(c));
+                sb.append(naturalSign(VOWEL_SIGNS.get(c)));
                 i++;
                 continue;
             }
 
+            // 9) Nasal/visarga signs.
             if (c == ANUSWAR) {
                 sb.append("ng");
                 i++;
                 continue;
             }
-
+            if (c == CHANDRA) {
+                sb.append("n");
+                i++;
+                continue;
+            }
             if (c == VISARGA) {
                 sb.append("h");
                 i++;
                 continue;
             }
 
-            if (c == CHANDRA || c == NUKTA) {
+            // 10) Nukta combining mark on its own: ignore.
+            if (c == NUKTA) {
                 i++;
                 continue;
             }
 
+            // 11) Bengali digits.
             if (DIGITS.containsKey(c)) {
                 if (convertDigits) sb.append(DIGITS.get(c));
                 else sb.append(c);
@@ -636,6 +774,7 @@ public final class BanglaToBanglishConverter {
                 continue;
             }
 
+            // 12) Any other character is preserved.
             sb.append(c);
             i++;
         }
@@ -649,50 +788,51 @@ public final class BanglaToBanglishConverter {
 
         String cleaned = cleanUnicode(word);
 
+        // Exact dictionary/exception always wins. This is the safest path for
+        // natural Banglish spellings and irregular pronunciations.
         String direct = lookupDictionary(cleaned);
         if (direct != null) return direct;
 
+        String remaining = cleaned;
+        StringBuilder prefixOut = new StringBuilder();
+        String suffixOut = "";
+
+        // Prefix matching is conservative: only use it when a meaningful core
+        // remains, otherwise it can corrupt short/common words.
         String prefixMatch = null;
-        String prefixValue = null;
         for (Map.Entry<String, String> e : PREFIX.entrySet()) {
             String key = e.getKey();
-            if (cleaned.startsWith(key) && cleaned.length() > key.length()) {
+            if (remaining.startsWith(key) && remaining.length() - key.length() >= 2) {
                 if (prefixMatch == null || key.length() > prefixMatch.length()) {
                     prefixMatch = key;
-                    prefixValue = e.getValue();
                 }
             }
         }
+        if (prefixMatch != null) {
+            prefixOut.append(PREFIX.get(prefixMatch));
+            remaining = remaining.substring(prefixMatch.length());
+        }
 
-        String remaining = (prefixMatch != null) ? cleaned.substring(prefixMatch.length()) : cleaned;
-
+        // Suffix matching is also conservative. Very short cores are left to
+        // the transliteration engine instead of forcing a morphological split.
         String suffixMatch = null;
-        String suffixValue = null;
         for (Map.Entry<String, String> e : SUFFIX.entrySet()) {
             String key = e.getKey();
-            if (remaining.endsWith(key) && remaining.length() > key.length()) {
+            if (remaining.endsWith(key) && remaining.length() - key.length() >= 2) {
                 if (suffixMatch == null || key.length() > suffixMatch.length()) {
                     suffixMatch = key;
-                    suffixValue = e.getValue();
                 }
             }
         }
-
-        String core = (suffixMatch != null)
-                ? remaining.substring(0, remaining.length() - suffixMatch.length())
-                : remaining;
-
-        String result;
-
-        if (core.isEmpty()) {
-            result = transliterateCore(cleaned);
-        } else {
-            StringBuilder sb = new StringBuilder();
-            if (prefixValue != null) sb.append(prefixValue);
-            sb.append(transliterateCore(core));
-            if (suffixValue != null) sb.append(suffixValue);
-            result = sb.toString();
+        if (suffixMatch != null) {
+            suffixOut = SUFFIX.get(suffixMatch);
+            remaining = remaining.substring(0, remaining.length() - suffixMatch.length());
         }
+
+        String core = transliterateCore(remaining);
+        String result = prefixOut.toString() + core + suffixOut;
+
+        if (result.isEmpty()) result = transliterateCore(cleaned);
 
         CACHE.put(cleaned, result);
         return result;
