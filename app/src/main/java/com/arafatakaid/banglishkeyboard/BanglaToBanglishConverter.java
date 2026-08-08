@@ -62,6 +62,11 @@ public final class BanglaToBanglishConverter {
     private static final Map<String,String> DICTIONARY = new ConcurrentHashMap<>(65536);
     private static final Map<String,String> EXCEPTION = new ConcurrentHashMap<>(4096);
 
+    // Multi-word dictionary entries, e.g. "ভালো আছি". Kept separate so
+    // sentence conversion can match phrases before converting individual words.
+    private static final Map<String,String> PHRASE_DICTIONARY = new ConcurrentHashMap<>(2048);
+    private static volatile int MAX_PHRASE_WORDS = 1;
+
     // Single-codepoint consonants (safe as char literals)
     private static final Map<Character,String> CONSONANTS = new HashMap<>();
 
@@ -444,6 +449,7 @@ public final class BanglaToBanglishConverter {
         if (bangla == null || banglish == null) return;
         bangla = cleanUnicode(Normalizer.normalize(bangla, Normalizer.Form.NFC));
         DICTIONARY.put(bangla.trim(), banglish.trim());
+        rebuildPhraseEntry(bangla.trim(), banglish.trim());
         CACHE.remove(bangla);
     }
 
@@ -455,6 +461,8 @@ public final class BanglaToBanglishConverter {
 
     public static void clearDictionary() {
         DICTIONARY.clear();
+        PHRASE_DICTIONARY.clear();
+        MAX_PHRASE_WORDS = 1;
         CACHE.clear();
     }
 
@@ -478,7 +486,10 @@ public final class BanglaToBanglishConverter {
 
             while (keys.hasNext()) {
                 String key = keys.next();
-                DICTIONARY.put(cleanUnicode(key), object.getString(key));
+                String normalizedKey = cleanUnicode(key);
+                String value = object.getString(key);
+                DICTIONARY.put(normalizedKey, value);
+                rebuildPhraseEntry(normalizedKey, value);
             }
 
             CACHE.clear();
@@ -513,6 +524,121 @@ public final class BanglaToBanglishConverter {
         if (value != null) CACHE.put(word, value);
 
         return value;
+    }
+
+    /* ====================================== PHRASE DICTIONARY ====================================== */
+    private static void rebuildPhraseEntry(String key, String value) {
+        if (key == null || value == null) return;
+        String normalized = cleanUnicode(key);
+        if (normalized.indexOf(' ') < 0) return;
+        if (!containsBangla(normalized)) return;
+
+        PHRASE_DICTIONARY.put(normalized, value.trim());
+        int words = countBanglaWords(normalized);
+        if (words > MAX_PHRASE_WORDS) MAX_PHRASE_WORDS = words;
+    }
+
+    private static boolean containsBangla(String text) {
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c >= '\u0980' && c <= '\u09FF') return true;
+        }
+        return false;
+    }
+
+    private static int countBanglaWords(String text) {
+        Matcher m = WORD_PATTERN.matcher(text);
+        int count = 0;
+        while (m.find()) count++;
+        return count;
+    }
+
+    /**
+     * Converts a gap while giving exact multi-word dictionary phrases priority.
+     * Only whitespace-separated Bengali words are joined; punctuation and
+     * English text remain untouched.
+     */
+    private static String processGapWithPhrases(String gap) {
+        if (gap == null || gap.isEmpty() || PHRASE_DICTIONARY.isEmpty()) {
+            return processGapWordsOnly(gap);
+        }
+
+        Matcher m = WORD_PATTERN.matcher(gap);
+        java.util.ArrayList<String> words = new java.util.ArrayList<>();
+        java.util.ArrayList<Integer> starts = new java.util.ArrayList<>();
+        java.util.ArrayList<Integer> ends = new java.util.ArrayList<>();
+
+        while (m.find()) {
+            words.add(m.group());
+            starts.add(m.start());
+            ends.add(m.end());
+        }
+        if (words.isEmpty()) return gap;
+
+        StringBuilder out = new StringBuilder();
+        int cursor = 0;
+        int i = 0;
+
+        while (i < words.size()) {
+            out.append(gap, cursor, starts.get(i));
+
+            String bestValue = null;
+            int bestEnd = i + 1;
+            int maxWords = Math.min(MAX_PHRASE_WORDS, words.size() - i);
+
+            // Longest exact Bengali phrase wins. Separators must be whitespace only.
+            for (int count = maxWords; count >= 2; count--) {
+                boolean whitespaceOnly = true;
+                for (int w = i; w < i + count - 1; w++) {
+                    String sep = gap.substring(ends.get(w), starts.get(w + 1));
+                    if (!sep.matches("\\s+")) {
+                        whitespaceOnly = false;
+                        break;
+                    }
+                }
+                if (!whitespaceOnly) continue;
+
+                StringBuilder phrase = new StringBuilder();
+                for (int w = i; w < i + count; w++) {
+                    if (w > i) phrase.append(' ');
+                    phrase.append(cleanUnicode(words.get(w)));
+                }
+
+                String value = PHRASE_DICTIONARY.get(phrase.toString());
+                if (value != null) {
+                    bestValue = value;
+                    bestEnd = i + count;
+                    break;
+                }
+            }
+
+            if (bestValue != null) {
+                out.append(bestValue);
+                cursor = ends.get(bestEnd - 1);
+                i = bestEnd;
+            } else {
+                out.append(processWord(words.get(i)));
+                cursor = ends.get(i);
+                i++;
+            }
+        }
+
+        out.append(gap.substring(cursor));
+        return out.toString();
+    }
+
+    private static String processGapWordsOnly(String gap) {
+        if (gap == null || gap.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        Matcher wordMatcher = WORD_PATTERN.matcher(gap);
+        int last = 0;
+        while (wordMatcher.find()) {
+            sb.append(gap, last, wordMatcher.start());
+            sb.append(processWord(wordMatcher.group()));
+            last = wordMatcher.end();
+        }
+        sb.append(gap.substring(last));
+        return sb.toString();
     }
 
     /* ====================================== LONGEST JOINT MATCH ====================================== */
@@ -840,21 +966,7 @@ public final class BanglaToBanglishConverter {
 
     /* ====================================== PROCESS GAP (non-preserved text) ====================================== */
     private static String processGap(String gap) {
-        if (gap == null || gap.isEmpty()) return "";
-
-        StringBuilder sb = new StringBuilder();
-        Matcher wordMatcher = WORD_PATTERN.matcher(gap);
-        int last = 0;
-
-        while (wordMatcher.find()) {
-            sb.append(gap, last, wordMatcher.start());
-            String word = wordMatcher.group();
-            sb.append(processWord(word));
-            last = wordMatcher.end();
-        }
-
-        sb.append(gap.substring(last));
-        return sb.toString();
+        return processGapWithPhrases(gap);
     }
 
     /* ====================================== PROCESS SENTENCE ====================================== */
