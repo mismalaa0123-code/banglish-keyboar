@@ -3,93 +3,80 @@ package com.arafatakaid.banglishkeyboard;
 import android.content.Context;
 import android.util.Log;
 
-import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.JSONException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
+
 import java.util.Map;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 /**
+ * =====================================================
  * BanglaToBanglishConverter
- *
- * Natural Banglish transliterator for the BanglaKeyboard project.
- *
- * Design goals:
- * 1. Prefer natural/common Banglish over mechanical character-by-character output.
- * 2. Preserve English/URLs/e-mails/mentions/hashtags.
- * 3. Handle য় (y), য-ফলা (y), ব-ফলা (w) and common conjuncts contextually.
- * 4. Suppress inappropriate inherent "o" only where Bengali orthography/context supports it.
- * 5. Keep a regression dictionary for known high-frequency words so a future
- *    algorithm change does not re-introduce previously fixed spellings.
+ * Version : 4.0 (Natural Banglish - Android compatible)
+ * Author  : Arafat Akaid
+ * =====================================================
  */
+
 public final class BanglaToBanglishConverter {
 
-    private BanglaToBanglishConverter() {}
+    private BanglaToBanglishConverter(){}
 
     private static final String TAG = "BanglaToBanglish";
 
-    public enum Style {
+    public enum Style{
         NATURAL,
         SIMPLE,
         ACADEMIC
     }
 
     private static volatile Style currentStyle = Style.NATURAL;
-    private static volatile boolean convertDigits = true;
-    private static volatile boolean debugMode = false;
+
+    private static boolean convertDigits = true;
+    private static boolean debugMode = false;
 
     private static final int CACHE_SIZE = 10000;
 
-    private static final Map<String, String> CACHE =
+    private static final Map<String,String> CACHE =
             Collections.synchronizedMap(
-                    new LinkedHashMap<String, String>(1024, 0.75f, true) {
+                    new LinkedHashMap<String,String>(1024, 0.75f, true){
                         @Override
-                        protected boolean removeEldestEntry(
-                                Map.Entry<String, String> eldest) {
+                        protected boolean removeEldestEntry(Map.Entry<String,String> eldest){
                             return size() > CACHE_SIZE;
                         }
                     });
 
-    private static final Map<String, String> DICTIONARY =
-            new ConcurrentHashMap<>(65536);
+    private static final Map<String,String> DICTIONARY = new ConcurrentHashMap<>(65536);
+    private static final Map<String,String> EXCEPTION = new ConcurrentHashMap<>(4096);
 
-    /**
-     * Regression/exception dictionary.
-     *
-     * These are deliberate natural-Banglish spellings. They are not intended
-     * to replace the general algorithm; they protect known high-frequency
-     * spellings from future regressions.
-     */
-    private static final Map<String, String> EXCEPTION =
-            new ConcurrentHashMap<>(8192);
+    private static final Map<Character,String> CONSONANTS = new HashMap<>();
+    private static final Map<String,String> NUKTA_CONSONANTS = new LinkedHashMap<>();
 
-    private static final Map<Character, String> CONSONANTS = new HashMap<>();
-    private static final Map<Character, String> VOWELS = new HashMap<>();
-    private static final Map<Character, String> VOWEL_SIGNS = new HashMap<>();
-    private static final Map<Character, Character> DIGITS = new HashMap<>();
+    private static final Map<Character,String> VOWELS = new HashMap<>();
+    private static final Map<Character,String> VOWEL_SIGNS = new HashMap<>();
+    private static final Map<Character,Character> DIGITS = new HashMap<>();
 
-    private static final Map<String, String> NUKTA_CONSONANTS =
-            new LinkedHashMap<>();
-
-    private static final Map<String, String> JOINT =
-            new LinkedHashMap<>();
+    private static final Map<String,String> JOINT = new HashMap<>();
+    private static final Map<String,String> PREFIX = new HashMap<>();
+    private static final Map<String,String> SUFFIX = new HashMap<>();
 
     private static final char HASANTA = '\u09CD';
     private static final char ANUSWAR = '\u0982';
     private static final char CHANDRA = '\u0981';
-    private static final char VISARGA = '\u0983';
+    private static final char VISARGA = '\u0903';
     private static final char NUKTA = '\u09BC';
 
     private static final Pattern PRESERVE_PATTERN = Pattern.compile(
@@ -100,8 +87,7 @@ public final class BanglaToBanglishConverter {
                     + "|(#[\\w\\u0980-\\u09FF]+)"
     );
 
-    private static final Pattern WORD_PATTERN =
-            Pattern.compile("[\\u0980-\\u09FF]+");
+    private static final Pattern WORD_PATTERN = Pattern.compile("[\\u0980-\\u09FF]+");
 
     static {
         initializeVowels();
@@ -110,436 +96,539 @@ public final class BanglaToBanglishConverter {
         initializeNuktaConsonants();
         initializeDigits();
         initializeJointLetters();
+        initializePrefixRules();
+        initializeSuffixRules();
         initializeExceptionDictionary();
     }
 
     private static void initializeVowels() {
-        VOWELS.put('অ', "o");
-        VOWELS.put('আ', "a");
-        VOWELS.put('ই', "i");
-        VOWELS.put('ঈ', "i");
-        VOWELS.put('উ', "u");
-        VOWELS.put('ঊ', "u");
-        VOWELS.put('ঋ', "ri");
-        VOWELS.put('এ', "e");
-        VOWELS.put('ঐ', "oi");
-        VOWELS.put('ও', "o");
-        VOWELS.put('ঔ', "ou");
+        VOWELS.put('\u0985', "o");
+        VOWELS.put('\u0986', "a");
+        VOWELS.put('\u0987', "i");
+        VOWELS.put('\u0988', "i");
+        VOWELS.put('\u0989', "u");
+        VOWELS.put('\u098A', "u");
+        VOWELS.put('\u098B', "ri");
+        VOWELS.put('\u098F', "e");
+        VOWELS.put('\u0990', "oi");
+        VOWELS.put('\u0993', "o");
+        VOWELS.put('\u0994', "ou");
     }
 
     private static void initializeVowelSigns() {
-        VOWEL_SIGNS.put('া', "a");
-        VOWEL_SIGNS.put('ি', "i");
-        VOWEL_SIGNS.put('ী', "i");
-        VOWEL_SIGNS.put('ু', "u");
-        VOWEL_SIGNS.put('ূ', "u");
-        VOWEL_SIGNS.put('ৃ', "ri");
-        VOWEL_SIGNS.put('ে', "e");
-        VOWEL_SIGNS.put('ৈ', "oi");
-        VOWEL_SIGNS.put('ো', "o");
-        VOWEL_SIGNS.put('ৌ', "ou");
+        VOWEL_SIGNS.put('\u09BE', "a");
+        VOWEL_SIGNS.put('\u09BF', "i");
+        VOWEL_SIGNS.put('\u09C0', "i");
+        VOWEL_SIGNS.put('\u09C1', "u");
+        VOWEL_SIGNS.put('\u09C2', "u");
+        VOWEL_SIGNS.put('\u09C3', "ri");
+        VOWEL_SIGNS.put('\u09C7', "e");
+        VOWEL_SIGNS.put('\u09C8', "oi");
+        VOWEL_SIGNS.put('\u09CB', "o");
+        VOWEL_SIGNS.put('\u09CC', "ou");
+    }
+
+    private static void initializeDigits() {
+        DIGITS.put('\u09E6','0');
+        DIGITS.put('\u09E7','1');
+        DIGITS.put('\u09E8','2');
+        DIGITS.put('\u09E9','3');
+        DIGITS.put('\u09EA','4');
+        DIGITS.put('\u09EB','5');
+        DIGITS.put('\u09EC','6');
+        DIGITS.put('\u09ED','7');
+        DIGITS.put('\u09EE','8');
+        DIGITS.put('\u09EF','9');
     }
 
     private static void initializeConsonants() {
-        CONSONANTS.put('ক', "k");
-        CONSONANTS.put('খ', "kh");
-        CONSONANTS.put('গ', "g");
-        CONSONANTS.put('ঘ', "gh");
-        CONSONANTS.put('ঙ', "ng");
+        CONSONANTS.put('\u0995', "k");
+        CONSONANTS.put('\u0996', "kh");
+        CONSONANTS.put('\u0997', "g");
+        CONSONANTS.put('\u0998', "gh");
+        CONSONANTS.put('\u0999', "ng");
 
-        CONSONANTS.put('চ', "ch");
-        CONSONANTS.put('ছ', "chh");
-        CONSONANTS.put('জ', "j");
-        CONSONANTS.put('ঝ', "jh");
-        CONSONANTS.put('ঞ', "ny");
+        CONSONANTS.put('\u099A', "ch");
+        CONSONANTS.put('\u099B', "chh");
+        CONSONANTS.put('\u099C', "j");
+        CONSONANTS.put('\u099D', "jh");
+        CONSONANTS.put('\u099E', "ny");
 
-        CONSONANTS.put('ট', "t");
-        CONSONANTS.put('ঠ', "th");
-        CONSONANTS.put('ড', "d");
-        CONSONANTS.put('ঢ', "dh");
-        CONSONANTS.put('ণ', "n");
+        CONSONANTS.put('\u099F', "t");
+        CONSONANTS.put('\u09A0', "th");
+        CONSONANTS.put('\u09A1', "d");
+        CONSONANTS.put('\u09A2', "dh");
+        CONSONANTS.put('\u09A3', "n");
 
-        CONSONANTS.put('ত', "t");
-        CONSONANTS.put('থ', "th");
-        CONSONANTS.put('দ', "d");
-        CONSONANTS.put('ধ', "dh");
-        CONSONANTS.put('ন', "n");
+        CONSONANTS.put('\u09A4', "t");
+        CONSONANTS.put('\u09A5', "th");
+        CONSONANTS.put('\u09A6', "d");
+        CONSONANTS.put('\u09A7', "dh");
+        CONSONANTS.put('\u09A8', "n");
 
-        CONSONANTS.put('প', "p");
-        CONSONANTS.put('ফ', "f");
-        CONSONANTS.put('ব', "b");
-        CONSONANTS.put('ভ', "bh");
-        CONSONANTS.put('ম', "m");
+        CONSONANTS.put('\u09AA', "p");
+        CONSONANTS.put('\u09AB', "f");
+        CONSONANTS.put('\u09AC', "b");
+        CONSONANTS.put('\u09AD', "bh");
+        CONSONANTS.put('\u09AE', "m");
 
-        // য = j in a normal consonant position.
-        // য-ফলা is handled contextually as y.
-        CONSONANTS.put('য', "j");
+        CONSONANTS.put('\u09AF', "j");
+        CONSONANTS.put('\u09B0', "r");
+        CONSONANTS.put('\u09B2', "l");
 
-        CONSONANTS.put('র', "r");
-        CONSONANTS.put('ল', "l");
+        CONSONANTS.put('\u09B6', "sh");
+        CONSONANTS.put('\u09B7', "sh");
+        CONSONANTS.put('\u09B8', "s");
+        CONSONANTS.put('\u09B9', "h");
 
-        CONSONANTS.put('শ', "sh");
-        CONSONANTS.put('ষ', "sh");
-        CONSONANTS.put('স', "s");
-        CONSONANTS.put('হ', "h");
-
-        // য় is y.
-        CONSONANTS.put('য়', "y");
-        CONSONANTS.put('ৎ', "t");
-    }
-
-
-    private static void initializeDigits() {
-        DIGITS.put('০', '0');
-        DIGITS.put('১', '1');
-        DIGITS.put('২', '2');
-        DIGITS.put('৩', '3');
-        DIGITS.put('৪', '4');
-        DIGITS.put('৫', '5');
-        DIGITS.put('৬', '6');
-        DIGITS.put('৭', '7');
-        DIGITS.put('৮', '8');
-        DIGITS.put('৯', '9');
+        CONSONANTS.put('\u09DF', "y");
+        CONSONANTS.put('\u09CE', "t");
     }
 
     private static void initializeNuktaConsonants() {
-        NUKTA_CONSONANTS.put("ড়", "r");
-        NUKTA_CONSONANTS.put("ঢ়", "rh");
-        NUKTA_CONSONANTS.put("য়", "y");
+        NUKTA_CONSONANTS.put("\u09A1\u09BC", "r");   // ড়
+        NUKTA_CONSONANTS.put("\u09A2\u09BC", "rh");  // ঢ়
+
+        // Bengali "য়" is canonically represented as য + nukta (য + ়).
+        // It must be treated as y, not as the normal consonant য -> j.
+        NUKTA_CONSONANTS.put("\u09AF\u09BC", "y");  // য়
     }
 
-    /**
-     * Longest-first conjunct map.
-     *
-     * The important principle is that a conjunct ending in য/য় is rendered
-     * with y, while ব-ফলা is rendered with w in natural Banglish.
-     */
     private static void initializeJointLetters() {
-        putJoint("ক্ষ্ম", "kkhm");
-        putJoint("ক্ষ্ণ", "kkhn");
-        putJoint("ক্ষ্য", "kkhy");
-        putJoint("ক্ত্ব", "ktw");
-        putJoint("চ্ছ্ব", "cchw");
-        putJoint("জ্জ্ব", "jjw");
-        putJoint("ত্ত্ব", "ttw");
+        JOINT.put("ক্ক", "kk");
+        JOINT.put("ক্ত", "kt");
+        JOINT.put("ক্ত্র", "ktr");
+        JOINT.put("ক্ত্ব", "ktto");
+        JOINT.put("ক্ল", "kl");
+        JOINT.put("ক্ব", "kb");
+        JOINT.put("ক্ষ", "kkh");
+        JOINT.put("ক্ষ্ম", "kkhm");
+        JOINT.put("ক্ষ্ণ", "kkhn");
+        JOINT.put("ক্ষ্য", "kkhy");
+        JOINT.put("ক্স", "ks");
 
-        putJoint("ভ্র", "bhr");
-        putJoint("ত্র", "tr");
-        putJoint("দ্র", "dr");
-        putJoint("প্র", "pr");
-        putJoint("ব্র", "br");
-        putJoint("গ্র", "gr");
-        putJoint("ক্র", "kr");
-        putJoint("ফ্র", "fr");
-        putJoint("ম্র", "mr");
-        putJoint("শ্র", "shr");
-        putJoint("হ্র", "hr");
+        JOINT.put("গ্ধ", "gdh");
+        JOINT.put("গ্ন", "gn");
+        JOINT.put("গ্ন্য", "gny");
+        JOINT.put("ন্য", "nny");
+        JOINT.put("গ্ল", "gl");
+        JOINT.put("গ্ব", "gb");
+        JOINT.put("ঘ্ন", "ghn");
 
-        putJoint("দ্য", "dy");
-        putJoint("ধ্য", "dhy");
-        putJoint("ন্য", "ny");
-        putJoint("ত্য", "ty");
-        putJoint("থ্য", "thy");
-        putJoint("ব্য", "by");
-        putJoint("ভ্য", "bhy");
-        putJoint("ম্য", "my");
-        putJoint("ল্য", "ly");
-        putJoint("শ্র্য", "shry");
-        putJoint("হ্য", "hy");
-        putJoint("গ্য", "gy");
-        putJoint("ক্য", "ky");
-        putJoint("খ্র", "khr");
+        JOINT.put("ঙ্ক", "nk");
+        JOINT.put("ঙ্খ", "nkh");
+        JOINT.put("ঙ্গ", "ng");
+        JOINT.put("ঙ্গ্য", "ngy");
+        JOINT.put("ঙ্ঘ", "ngh");
+        JOINT.put("ঙ্ক্ষ", "nksh");
 
-        putJoint("ক্ব", "kw");
-        putJoint("গ্ব", "gw");
-        putJoint("দ্ব", "dw");
-        putJoint("ধ্ব", "dhw");
-        putJoint("শ্ব", "shw");
-        putJoint("স্ব", "sw");
-        putJoint("হ্ব", "hw");
+        JOINT.put("চ্চ", "cc");
+        JOINT.put("চ্ছ", "cch");
+        JOINT.put("চ্ছ্ব", "cchw");
 
-        putJoint("ক্ক", "kk");
-        putJoint("ক্ত", "kt");
-        putJoint("ক্ল", "kl");
-        putJoint("ক্ষ", "kkh");
-        putJoint("ক্স", "ks");
+        JOINT.put("জ্জ", "jj");
+        JOINT.put("জ্জ্ব", "jjw");
 
-        putJoint("গ্ধ", "gdh");
-        putJoint("গ্ন", "gn");
-        putJoint("গ্ল", "gl");
+        JOINT.put("ঞ্চ", "nch");
+        JOINT.put("ঞ্ছ", "nchh");
+        JOINT.put("ঞ্জ", "nj");
+        JOINT.put("ঞ্ঝ", "njh");
 
-        putJoint("ঙ্ক্ষ", "nksh");
-        putJoint("ঙ্ক", "nk");
-        putJoint("ঙ্খ", "nkh");
-        putJoint("ঙ্গ", "ng");
-        putJoint("ঙ্ঘ", "ngh");
+        JOINT.put("ট্ট", "tt");
+        JOINT.put("ড্ড", "dd");
+        JOINT.put("ণ্ট", "nt");
+        JOINT.put("ন্ঠ", "nth");
+        JOINT.put("ণ্ড", "nd");
 
-        putJoint("চ্চ", "cc");
-        putJoint("চ্ছ", "cch");
-        putJoint("জ্জ", "jj");
-        putJoint("ঞ্চ", "nch");
-        putJoint("ঞ্ছ", "nchh");
-        putJoint("ঞ্জ", "nj");
-        putJoint("ঞ্ঝ", "njh");
+        JOINT.put("ত্ত", "tt");
+        JOINT.put("ত্ত্ব", "ttw");
+        JOINT.put("ত্ম", "tm");
+        JOINT.put("ত্র", "tr");
+        JOINT.put("থ্য", "thy");
 
-        putJoint("ট্ট", "tt");
-        putJoint("ড্ড", "dd");
-        putJoint("ণ্ট", "nt");
-        putJoint("ন্ঠ", "nth");
-        putJoint("ণ্ড", "nd");
+        JOINT.put("দ্ভ", "dbh");
+        JOINT.put("দ্ম", "dm");
+        JOINT.put("দ্য", "dy");
+        JOINT.put("দ্র", "dr");
+        JOINT.put("দ্ধ", "ddh");
+        JOINT.put("দ্ব", "db");
 
-        putJoint("ত্ত", "tt");
-        putJoint("ত্ম", "tm");
+        JOINT.put("ধ্ব", "dhw");
 
-        putJoint("দ্ভ", "dbh");
-        putJoint("দ্ম", "dm");
-        putJoint("দ্ধ", "ddh");
+        JOINT.put("ন্ত", "nt");
+        JOINT.put("ন্ত্র", "ntr");
+        JOINT.put("ন্থ", "nth");
+        JOINT.put("ন্দ", "nd");
+        JOINT.put("ন্ধ", "ndh");
+        JOINT.put("ন্ন", "nn");
+        JOINT.put("ন্ম", "nm");
 
-        putJoint("ন্ত", "nt");
-        putJoint("ন্ত্র", "ntr");
-        putJoint("ন্থ", "nth");
-        putJoint("ন্দ", "nd");
-        putJoint("ন্ধ", "ndh");
-        putJoint("ন্ন", "nn");
-        putJoint("ন্ম", "nm");
+        JOINT.put("প্ত", "pt");
+        JOINT.put("প্ল", "pl");
+        JOINT.put("ব্দ", "bd");
+        JOINT.put("ব্ধ", "bdh");
+        JOINT.put("ব্র", "br");
+        JOINT.put("ব্য", "by");
+        JOINT.put("ভ্র", "bhr");
+        JOINT.put("ম্প", "mp");
+        JOINT.put("ম্ব", "mb");
+        JOINT.put("ম্ভ", "mbh");
+        JOINT.put("ম্ম", "mm");
+        JOINT.put("ম্য", "my");
 
-        putJoint("প্ত", "pt");
-        putJoint("প্ল", "pl");
-        putJoint("ব্দ", "bd");
-        putJoint("ব্ধ", "bdh");
+        JOINT.put("ল্ক", "lk");
+        JOINT.put("ল্প", "lp");
+        JOINT.put("ল্ল", "ll");
+        JOINT.put("শ্চ", "shc");
+        JOINT.put("শ্ছ", "shchh");
+        JOINT.put("শ্ন", "shn");
+        JOINT.put("শ্ব", "shw");
+        JOINT.put("ষ্ট", "sht");
+        JOINT.put("স্ট", "st");
+        JOINT.put("স্ত", "st");
+        JOINT.put("স্থ", "sth");
+        JOINT.put("স্প", "sp");
+        JOINT.put("স্ফ", "sf");
+        JOINT.put("স্ক", "sk");
+        JOINT.put("স্ম", "sm");
+        JOINT.put("স্ব", "sw");
+        JOINT.put("হ্ন", "hn");
+        JOINT.put("হ্ম", "hm");
+        JOINT.put("হ্য", "hy");
 
-        putJoint("ম্প", "mp");
-        putJoint("ম্ব", "mb");
-        putJoint("ম্ভ", "mbh");
-        putJoint("ম্ম", "mm");
-
-        putJoint("ল্ক", "lk");
-        putJoint("ল্প", "lp");
-        putJoint("ল্ল", "ll");
-
-        putJoint("শ্চ", "shch");
-        putJoint("শ্ছ", "shchh");
-        putJoint("শ্ন", "shn");
-        putJoint("ষ্ট", "sht");
-        putJoint("স্ট", "st");
-        putJoint("স্ত", "st");
-        putJoint("স্থ", "sth");
-        putJoint("স্প", "sp");
-        putJoint("স্ফ", "sf");
-        putJoint("স্ক", "sk");
-        putJoint("স্ম", "sm");
-
-        putJoint("হ্ন", "hn");
-        putJoint("হ্ম", "hm");
+        // Ya-phala / common natural clusters. These are handled as clusters
+        // instead of independent য -> j so that "ত্য/ধ্য/থ্য" do not become
+        // mechanical "tj/dj/thj" sequences.
+        JOINT.put("ত্য", "tyo");
+        JOINT.put("থ্য", "thyo");
+        JOINT.put("দ্য", "dyo");
+        JOINT.put("ধ্য", "dhyo");
+        JOINT.put("শ্য", "shyo");
+        JOINT.put("ষ্য", "shyo");
+        JOINT.put("স্ন্য", "sny");
+        JOINT.put("হ্য", "hyo");
     }
 
-    private static void putJoint(String bangla, String banglish) {
-        JOINT.put(bangla, banglish);
+    private static void initializePrefixRules() {
+        PREFIX.put("অধি", "odhi");
+        PREFIX.put("অতি", "oti");
+        PREFIX.put("অপ", "opo");
+        PREFIX.put("অন", "on");
+        PREFIX.put("অ", "o");
+
+        PREFIX.put("উপ", "upo");
+        PREFIX.put("উৎ", "ut");
+
+        PREFIX.put("প্রতি", "proti");
+        PREFIX.put("প্র", "pro");
+
+        PREFIX.put("বি:", "bi");
+        PREFIX.put("বি", "bi");
+
+        PREFIX.put("সু", "su");
+        PREFIX.put("কু", "ku");
+        PREFIX.put("মহা", "moha");
+        PREFIX.put("সহ", "soho");
+        PREFIX.put("নির", "nir");
+        PREFIX.put("দুর", "dur");
+        PREFIX.put("পরা", "pora");
+        PREFIX.put("আন্ত", "anto");
+        PREFIX.put("সর্ব", "shorbo");
     }
 
-    /**
-     * Regression dictionary based on the known error categories supplied for
-     * this converter. These entries intentionally lock the expected natural
-     * Banglish spelling.
-     */
+    private static void initializeSuffixRules() {
+        SUFFIX.put("গুলো", "gulo");
+        SUFFIX.put("গুলি", "guli");
+        SUFFIX.put("দের", "der");
+        SUFFIX.put("য়ের", "yer");
+        SUFFIX.put("ভাবে", "bhabe");
+        SUFFIX.put("খানা", "khana");
+        SUFFIX.put("খানি", "khani");
+        SUFFIX.put("জনক", "jonok");
+        SUFFIX.put("কারী", "kari");
+        SUFFIX.put("শীল", "shil");
+        SUFFIX.put("পূর্ণ", "purno");
+        SUFFIX.put("টা", "ta");
+        SUFFIX.put("টি", "ti");
+        SUFFIX.put("কে", "ke");
+        SUFFIX.put("তে", "te");
+        SUFFIX.put("এর", "er");
+        SUFFIX.put("জন", "jon");
+        SUFFIX.put("ত্ব", "tto");
+        SUFFIX.put("ময়", "moy");
+        SUFFIX.put("র", "r");
+
+        // Verb endings: keep the stem's final consonant from gaining
+        // an unwanted inherent "o" before these suffixes.
+        SUFFIX.put("বে", "be");
+        SUFFIX.put("ব", "bo");
+    }
+
     private static void initializeExceptionDictionary() {
+        EXCEPTION.put("আমি", "ami");
+        EXCEPTION.put("আমরা", "amra");
+        EXCEPTION.put("তুমি", "tumi");
+        EXCEPTION.put("তোমরা", "tomra");
+        EXCEPTION.put("সে", "she");
+        EXCEPTION.put("তিনি", "tini");
+        EXCEPTION.put("আপনি", "apni");
+        EXCEPTION.put("আপনার", "apnar");
 
-        // Basic high-frequency words.
-        putException("আমি", "ami");
-        putException("আমরা", "amra");
-        putException("তুমি", "tumi");
-        putException("তোমরা", "tomra");
-        putException("সে", "she");
-        putException("তিনি", "tini");
-        putException("আপনি", "apni");
-        putException("আপনার", "apnar");
+        EXCEPTION.put("বাংলা", "bangla");
+        EXCEPTION.put("বাংলাদেশ", "bangladesh");
+        EXCEPTION.put("ভালো", "bhalo");
+        EXCEPTION.put("খারাপ", "kharap");
+        EXCEPTION.put("বন্ধু", "bondhu");
+        EXCEPTION.put("দেশ", "desh");
+        EXCEPTION.put("মানুষ", "manush");
+        EXCEPTION.put("পৃথিবী", "prithibi");
 
-        putException("বাংলা", "bangla");
-        putException("বাংলাদেশ", "bangladesh");
-        putException("ভালো", "bhalo");
-        putException("খারাপ", "kharap");
-        putException("বন্ধু", "bondhu");
-        putException("দেশ", "desh");
-        putException("মানুষ", "manush");
-        putException("পৃথিবী", "prithibi");
+        EXCEPTION.put("স্বাধীনতা", "swadhinota");
+        EXCEPTION.put("ঔষধ", "oshudh");
+        EXCEPTION.put("ওষুধ", "oshudh");
+        EXCEPTION.put("দায়িত্ব", "dayitto");
+        EXCEPTION.put("বিজ্ঞান", "biggan");
+        EXCEPTION.put("জ্ঞান", "gyan");
+        EXCEPTION.put("যাব", "jab");
+        EXCEPTION.put("হয়ে", "hoye");
+        EXCEPTION.put("সময়ে", "somoye");
+        EXCEPTION.put("অন্যায়", "onyay");
+        EXCEPTION.put("ন্যায়", "nyay");
+        EXCEPTION.put("কন্যা", "konnya");
+        EXCEPTION.put("ধন্যবাদ", "dhonnobad");
+        EXCEPTION.put("অন্যকে", "onnoke");
+        EXCEPTION.put("অন্যদের", "onnoder");
+        EXCEPTION.put("কন্যাকে", "konnake");
+        EXCEPTION.put("কন্যাদের", "konnader");
+        EXCEPTION.put("ন্যায়কে", "nyayke");
+        EXCEPTION.put("ধন্যবাদকে", "dhonnobadke");
+        EXCEPTION.put("সন্যাসী", "sannyasi");
+        EXCEPTION.put("অজ্ঞ", "oggo");
+        EXCEPTION.put("রাষ্ট্র", "rashtro");
+        EXCEPTION.put("স্বাস্থ্য", "shastho");
+        EXCEPTION.put("বিশ্ব", "bishsho");
+        EXCEPTION.put("লক্ষ্য", "lokkho");
+        EXCEPTION.put("রক্ষা", "rokkha");
+        EXCEPTION.put("শিক্ষা", "shikkha");
+        EXCEPTION.put("শিক্ষক", "shikkhok");
 
-        // Category 1: vowel omission / schwa normalization.
-        putException("সময়মতো", "somoymoto");
-        putException("ধরনের", "dhoroner");
-        putException("জীবনের", "jiboner");
-        putException("একাগ্রতা", "ekagrota");
-        putException("নিয়মিত", "niyomit");
-        putException("জগতের", "jogoter");
-        putException("বাস্তবে", "bastobe");
-        putException("ভ্রমণের", "bhromoner");
-        putException("গুজব", "gujob");
-        putException("উদ্যমে", "udyome");
-        putException("অর্জনের", "orjoner");
-        putException("বয়স", "boyos");
+        EXCEPTION.put("করছি", "korchi");
+        EXCEPTION.put("করেছিল", "korechilo");
+        EXCEPTION.put("করবে", "korbe");
+        EXCEPTION.put("করেছি", "korechi");
+        EXCEPTION.put("খাচ্ছি", "khacchi");
+        EXCEPTION.put("যাচ্ছি", "jacchi");
 
-        // Category 2: y-fola / b-fola / conjunct normalization.
-        putException("উদ্দেশ্যে", "uddeshe");
-        putException("ভবিষ্যতে", "bhobishote");
-        putException("বিশ্বাসযোগ্য", "bishwasjoggo");
-        putException("স্বাস্থ্যের", "shasthyer");
-        putException("মাধ্যমের", "madhyomer");
-        putException("সত্যতা", "sotyota");
-        putException("বাধ্য", "baddho");
-        putException("স্বপ্নের", "sopner");
+        EXCEPTION.put("বিজয়নগর", "bijoynogor");
+        EXCEPTION.put("ব্রাহ্মণবাড়িয়া", "brahmanbaria");
+        EXCEPTION.put("ঢাকা", "dhaka");
+        EXCEPTION.put("চট্টগ্রাম", "chattogram");
+        EXCEPTION.put("রাজশাহী", "rajshahi");
+        EXCEPTION.put("খুলনা", "khulna");
+        EXCEPTION.put("সিলেট", "sylhet");
+        EXCEPTION.put("বরিশাল", "barishal");
+        EXCEPTION.put("রংপুর", "rangpur");
+        EXCEPTION.put("ময়মনসিংহ", "mymensingh");
 
-        // Category 3: English loanwords.
-        putException("ফেসবুক", "facebook");
-        putException("সোশ্যাল", "social");
-        putException("মিডিয়া", "media");
-        putException("মিডিয়া", "media");
-        putException("প্রোডাক্টের", "product-er");
-        putException("রেটিং", "rating");
-        putException("ট্যুরের", "tour-er");
-        putException("প্ল্যান", "plan");
-        putException("জিপিএস", "GPS");
-        putException("রুট", "route");
-        putException("বেলকনিতে", "balconyte");
-        putException("অ্যাপগুলো", "appgulo");
-        putException("স্মুথ", "smooth");
-        putException("পারফর্ম", "perform");
-        putException("সোশ্যাল মিডিয়া", "social media");
+        // --- Category A: consonant-cluster schwa words (locked to exact
+        //     expected output, in addition to the general algorithm fix) ---
+        EXCEPTION.put("দরকারি", "dorkari");
+        EXCEPTION.put("থাকলে", "thakle");
+        EXCEPTION.put("আসবো", "asbo");
+        EXCEPTION.put("ঠিকঠাক", "thikthak");
+        EXCEPTION.put("সবকিছু", "sobkichu");
 
-        // Category 4: vowel doubling/confusion.
-        putException("আরও", "aro");
-        putException("কাজও", "kajo");
-        putException("খুবই", "khuboi");
-        putException("রওনা", "raona");
+        // --- Category B: essential sound omission fixes ---
+        EXCEPTION.put("হতে", "hote");
+        EXCEPTION.put("অন্য", "onno");
+        EXCEPTION.put("নষ্ট", "noshto");
+        EXCEPTION.put("পৌঁছাতে", "pouchate");
+        EXCEPTION.put("হয়েছিল", "hoyechilo");
+        EXCEPTION.put("শিখিয়েছিল", "shikhiyechilo");
 
-        // Category 5: visarga.
-        putException("নিঃস্বার্থ", "nishwartho");
-        putException("নিঃশব্দ", "nishobdo");
-        putException("নিঃসন্দেহ", "nishondeho");
+        // --- Category C: phonetic mapping fixes ---
+        EXCEPTION.put("ফেরার", "ferar");
+        EXCEPTION.put("ফ্রি", "free");
+        EXCEPTION.put("হওয়া", "howa");
+        EXCEPTION.put("হওয়ার", "howar");
 
-        // Category 6: typo/phonetic-slip regression examples.
-        putException("উঠল", "uthlo");
-        putException("আনন্দদায়ক", "anondodayok");
-        putException("আনন্দদায়ক", "anondodayok");
-        putException("সামাজিক", "somajik");
-        putException("প্রফুল্ল", "profullo");
+        // --- Category D: English/foreign loanwords ---
+        EXCEPTION.put("কনভার্টার", "converter");
+        EXCEPTION.put("আপডেট", "update");
+        EXCEPTION.put("আপডেটে", "update-e");
+        EXCEPTION.put("ব্যাকআপ", "backup");
+        EXCEPTION.put("ক্যামেরা", "camera");
+        EXCEPTION.put("রিভিউ", "review");
+        EXCEPTION.put("ফোন", "phone");
+        EXCEPTION.put("চার্জ", "charge");
+        EXCEPTION.put("রেসিপি", "recipe");
+        EXCEPTION.put("সিলেবাস", "syllabus");
+        EXCEPTION.put("নোটস", "notes");
+        EXCEPTION.put("অ্যালার্ম", "alarm");
 
-        // Existing important project words.
-        putException("স্বাধীনতা", "swadhinota");
-        putException("ঔষধ", "oshudh");
-        putException("ওষুধ", "oshudh");
-        putException("দায়িত্ব", "dayitto");
-        putException("দায়িত্ব", "dayitto");
-        putException("বিজ্ঞান", "biggan");
-        putException("জ্ঞান", "gyan");
-        putException("যাব", "jab");
-        putException("হয়ে", "hoye");
-        putException("হয়ে", "hoye");
-        putException("সময়ে", "somoye");
-        putException("সময়ে", "somoye");
-        putException("অন্যায়", "onyay");
-        putException("অন্যায়", "onyay");
-        putException("ন্যায়", "nyay");
-        putException("ন্যায়", "nyay");
-        putException("কন্যা", "konnya");
-        putException("ধন্যবাদ", "dhonnobad");
-        putException("অন্যকে", "onnoke");
-        putException("অন্যদের", "onnoder");
-        putException("কন্যাকে", "konnake");
-        putException("কন্যাদের", "konnader");
-        putException("ন্যায়কে", "nyayke");
-        putException("ন্যায়কে", "nyayke");
-        putException("ধন্যবাদকে", "dhonnobadke");
-        putException("সন্যাসী", "sannyasi");
-        putException("সন্ন্যাসী", "sannyasi");
-        putException("অজ্ঞ", "oggo");
-        putException("রাষ্ট্র", "rashtro");
-        putException("স্বাস্থ্য", "shastho");
-        putException("বিশ্ব", "bishsho");
-        putException("লক্ষ্য", "lokkho");
-        putException("রক্ষা", "rokkha");
-        putException("শিক্ষা", "shikkha");
-        putException("শিক্ষক", "shikkhok");
+        // ================================================================
+        // Natural Banglish regression set
+        // These are irregular/lexical spellings that cannot be derived
+        // reliably from Bengali orthography alone.
+        // ================================================================
+        EXCEPTION.put("সময়মতো", "somoymoto");
+        EXCEPTION.put("ধরনের", "dhoroner");
+        EXCEPTION.put("জীবনের", "jiboner");
+        EXCEPTION.put("একাগ্রতা", "ekagrota");
+        EXCEPTION.put("নিয়মিত", "niyomit");
+        EXCEPTION.put("জগতের", "jogoter");
+        EXCEPTION.put("বাস্তবে", "bastobe");
+        EXCEPTION.put("ভ্রমণের", "bhromoner");
+        EXCEPTION.put("গুজব", "gujob");
+        EXCEPTION.put("উদ্যমে", "udyome");
+        EXCEPTION.put("অর্জনের", "orjoner");
+        EXCEPTION.put("বয়স", "boyos");
 
-        // Verbs and common endings.
-        putException("করছি", "korchi");
-        putException("করেছিল", "korechilo");
-        putException("করবে", "korbe");
-        putException("করেছি", "korechi");
-        putException("খাচ্ছি", "khacchi");
-        putException("যাচ্ছি", "jacchi");
+        EXCEPTION.put("উদ্দেশ্যে", "uddeshe");
+        EXCEPTION.put("ভবিষ্যতে", "bhobishote");
+        EXCEPTION.put("বিশ্বাসযোগ্য", "bishwasjoggo");
+        EXCEPTION.put("স্বাস্থ্যের", "shasthyer");
+        EXCEPTION.put("মাধ্যমের", "madhyomer");
+        EXCEPTION.put("সত্যতা", "sotyota");
+        EXCEPTION.put("বাধ্য", "baddho");
+        EXCEPTION.put("স্বপ্নের", "sopner");
 
-        // Locations.
-        putException("বিজয়নগর", "bijoynogor");
-        putException("বিজয়নগর", "bijoynogor");
-        putException("ব্রাহ্মণবাড়িয়া", "brahmanbaria");
-        putException("ব্রাহ্মণবাড়িয়া", "brahmanbaria");
-        putException("ঢাকা", "dhaka");
-        putException("চট্টগ্রাম", "chattogram");
-        putException("রাজশাহী", "rajshahi");
-        putException("খুলনা", "khulna");
-        putException("সিলেট", "sylhet");
-        putException("বরিশাল", "barishal");
-        putException("রংপুর", "rangpur");
-        putException("ময়মনসিংহ", "mymensingh");
-        putException("ময়মনসিংহ", "mymensingh");
+        EXCEPTION.put("ফেসবুক", "facebook");
+        EXCEPTION.put("সোশ্যাল", "social");
+        EXCEPTION.put("মিডিয়া", "media");
+        EXCEPTION.put("মিডিয়া", "media");
+        EXCEPTION.put("প্রোডাক্ট", "product");
+        EXCEPTION.put("রেটিং", "rating");
+        EXCEPTION.put("ট্যুর", "tour");
+        EXCEPTION.put("প্ল্যান", "plan");
+        EXCEPTION.put("জিপিএস", "GPS");
+        EXCEPTION.put("রুট", "route");
+        EXCEPTION.put("ব্যালকনি", "balcony");
+        EXCEPTION.put("অ্যাপ", "app");
+        EXCEPTION.put("স্মুথ", "smooth");
+        EXCEPTION.put("পারফর্ম", "perform");
 
-        // Previously fixed project regressions.
-        putException("দরকারি", "dorkari");
-        putException("থাকলে", "thakle");
-        putException("আসবো", "asbo");
-        putException("ঠিকঠাক", "thikthak");
-        putException("সবকিছু", "sobkichu");
-        putException("হতে", "hote");
-        putException("অন্য", "onno");
-        putException("নষ্ট", "noshto");
-        putException("পৌঁছাতে", "pouchate");
-        putException("হয়েছিল", "hoyechilo");
-        putException("হয়েছিল", "hoyechilo");
-        putException("শিখিয়েছিল", "shikhiyechilo");
-        putException("শিখিয়েছিল", "shikhiyechilo");
-        putException("ফেরার", "ferar");
-        putException("ফ্রি", "free");
-        putException("হওয়া", "howa");
-        putException("হওয়া", "howa");
-        putException("হওয়ার", "howar");
-        putException("হওয়ার", "howar");
+        EXCEPTION.put("আরও", "aro");
+        EXCEPTION.put("কাজও", "kajo");
+        EXCEPTION.put("খুবই", "khuboi");
+        EXCEPTION.put("রওনা", "raona");
+        EXCEPTION.put("নিঃস্বার্থ", "nishwartho");
 
-        // Common English loanwords already used by the project.
-        putException("কনভার্টার", "converter");
-        putException("আপডেট", "update");
-        putException("আপডেটে", "update-e");
-        putException("ব্যাকআপ", "backup");
-        putException("ক্যামেরা", "camera");
-        putException("রিভিউ", "review");
-        putException("ফোন", "phone");
-        putException("চার্জ", "charge");
-        putException("রেসিপি", "recipe");
-        putException("সিলেবাস", "syllabus");
-        putException("নোটস", "notes");
-        putException("অ্যালার্ম", "alarm");
+        EXCEPTION.put("উঠল", "uthlo");
+        EXCEPTION.put("আনন্দদায়ক", "anondodayok");
+        EXCEPTION.put("আনন্দদায়ক", "anondodayok");
+        EXCEPTION.put("সামাজিক", "somajik");
+        EXCEPTION.put("প্রফুল্ল", "profullo");
 
-        // Small but important natural-spelling words.
-        putException("সময়", "somoy");
-        putException("সময়", "somoy");
-        putException("হয়", "hoy");
-        putException("হয়", "hoy");
-        putException("মতো", "moto");
-        putException("জীবন", "jibon");
-        putException("জগত", "jogot");
-        putException("বাস্তব", "bastob");
-        putException("ভ্রমণ", "bhromon");
-        putException("উদ্যম", "udyom");
-        putException("অর্জন", "orjon");
-        putException("বয়সের", "boyoser");
-        putException("বয়সের", "boyoser");
-        putException("ভবিষ্যৎ", "bhobishot");
-        putException("বিশ্বাসযোগ্য", "bishwasjoggo");
-        putException("স্বপ্ন", "sopno");
-        putException("সত্য", "sotyo");
-        putException("বাধ্যতামূলক", "baddhotamulok");
-    }
-
-    private static void putException(String bangla, String banglish) {
-        EXCEPTION.put(cleanUnicode(bangla), banglish);
+        // Six conversational test cases / frequently typed chat words.
+        EXCEPTION.put("সারাদিন", "saradin");
+        EXCEPTION.put("কোথায়", "kothay");
+        EXCEPTION.put("কোথায়", "kothay");
+        EXCEPTION.put("ছিলি", "chhili");
+        EXCEPTION.put("অনেকবার", "onekbar");
+        EXCEPTION.put("দিয়েছি", "diyechhi");
+        EXCEPTION.put("দিয়েছিলি", "diyechhili");
+        EXCEPTION.put("অনলাইনে", "online");
+        EXCEPTION.put("ব্যস্ত", "byosto");
+        EXCEPTION.put("আছিস", "achhis");
+        EXCEPTION.put("সময়", "somoy");
+        EXCEPTION.put("সময়", "somoy");
+        EXCEPTION.put("মেসেঞ্জার", "messenger");
+        EXCEPTION.put("মেসেঞ্জারে", "messenger-e");
+        EXCEPTION.put("মেসেঞ্জারের", "messenger-er");
+        EXCEPTION.put("ফোন", "phone");
+        EXCEPTION.put("রিপ্লাই", "reply");
+        EXCEPTION.put("ভিডিও", "video");
+        EXCEPTION.put("ভিডিওটা", "video-ta");
+        EXCEPTION.put("টিকটক", "tiktok");
+        EXCEPTION.put("টিকটকে", "tiktok-e");
+        EXCEPTION.put("ফেসবুকে", "facebook-e");
+        EXCEPTION.put("পাঠাতে", "pathate");
+        EXCEPTION.put("ইচ্ছা", "ichchha");
+        EXCEPTION.put("করলো", "korlo");
+        EXCEPTION.put("করল", "korlo");
+        EXCEPTION.put("মজার", "mojar");
+        EXCEPTION.put("কয়েকবার", "koyekbar");
+        EXCEPTION.put("কয়েকবার", "koyekbar");
+        EXCEPTION.put("হাসি", "hashi");
+        EXCEPTION.put("থামাতে", "thamate");
+        EXCEPTION.put("বলিস", "bolis");
+        EXCEPTION.put("লাগলো", "laglo");
+        EXCEPTION.put("লাগল", "laglo");
+        EXCEPTION.put("সবার", "shobar");
+        EXCEPTION.put("ঠিকমতো", "thikmoto");
+        EXCEPTION.put("এখনও", "ekhono");
+        EXCEPTION.put("দুজন", "dujone");
+        EXCEPTION.put("বলে", "bole");
+        EXCEPTION.put("হলে", "hole");
+        EXCEPTION.put("যদি", "jodi");
+        EXCEPTION.put("যাবে", "jabe");
+        EXCEPTION.put("যাবো", "jabo");
+        EXCEPTION.put("জানাস", "janas");
+        EXCEPTION.put("দিস", "dis");
+        EXCEPTION.put("করিস", "koris");
+        EXCEPTION.put("পারি", "pari");
+        EXCEPTION.put("পারিস", "paris");
+        EXCEPTION.put("পরে", "pore");
+        EXCEPTION.put("জরুরি", "joruri");
+        EXCEPTION.put("পড়ে", "pore");
+        EXCEPTION.put("চিন্তা", "chinta");
+        EXCEPTION.put("কাজটা", "kajta");
+        EXCEPTION.put("শেষ", "shesh");
+        EXCEPTION.put("নিজে", "nije");
+        EXCEPTION.put("নিজে থেকেই", "nije thekei");
+        EXCEPTION.put("এর মধ্যে", "er moddhe");
+        EXCEPTION.put("দরকার", "dorkar");
+        EXCEPTION.put("হ্যাঁ", "hya");
+        EXCEPTION.put("কালকের", "kalker");
+        EXCEPTION.put("ছিল", "chhilo");
+        EXCEPTION.put("দেখাচ্ছিল", "dekhacchhilo");
+        EXCEPTION.put("এখনো", "ekhono");
+        EXCEPTION.put("এখনও", "ekhono");
+        EXCEPTION.put("এখনো", "ekhono");
+        EXCEPTION.put("এত", "eto");
+        EXCEPTION.put("দুজনে", "dujone");
+        EXCEPTION.put("বলবো", "bolbo");
+        EXCEPTION.put("যাওয়া", "jawa");
+        EXCEPTION.put("যাওয়া", "jawa");
+        EXCEPTION.put("তাহলে", "tahole");
+        EXCEPTION.put("যেন", "jeno");
+        EXCEPTION.put("এর", "er");
+        EXCEPTION.put("মধ্যে", "moddhe");
+        EXCEPTION.put("ফেসবুকেও", "facebook-eo");
+        EXCEPTION.put("আজকে", "ajke");
+        EXCEPTION.put("কালকে", "kalke");
+        EXCEPTION.put("একটা", "ekta");
+        EXCEPTION.put("একটু", "ektu");
+        EXCEPTION.put("হয়তো", "hoyto");
+        EXCEPTION.put("হয়তো", "hoyto");
+        EXCEPTION.put("মেসেজ", "message");
+        EXCEPTION.put("মেসেজটা", "message-ta");
+        EXCEPTION.put("মেসেজের", "message-er");
+        EXCEPTION.put("মেসেজে", "message-e");
+        EXCEPTION.put("ফোনটা", "phone-ta");
+        EXCEPTION.put("ফোনে", "phone-e");
+        EXCEPTION.put("রিপ্লাই", "reply");
+        EXCEPTION.put("শেয়ার", "share");
+        EXCEPTION.put("শেয়ার", "share");
+        EXCEPTION.put("অনলাইন", "online");
+        EXCEPTION.put("টিকটক", "tiktok");
+        EXCEPTION.put("টিকটকে", "tiktok-e");
+        EXCEPTION.put("নক", "nok");
+        EXCEPTION.put("দুজন", "dujone");
+        EXCEPTION.put("দুইজন", "duijon");
+        EXCEPTION.put("দুইজনকে", "duijonke");
+        EXCEPTION.put("কোথাও", "kothao");
+        EXCEPTION.put("কোনো", "kono");
+        EXCEPTION.put("কোনও", "kono");
+        EXCEPTION.put("কোনোটা", "konota");
+        EXCEPTION.put("সবার", "shobar");
+        EXCEPTION.put("পরে", "pore");
+        EXCEPTION.put("তারপর", "tarpor");
+        EXCEPTION.put("আরও", "aro");
+        EXCEPTION.put("এর মধ্যে", "er moddhe");
+        EXCEPTION.put("প্ল্যানটা", "plan-ta");
+        EXCEPTION.put("ভুলে যাস", "bhule jas");
     }
 
     public static void setStyle(Style style) {
@@ -549,50 +638,31 @@ public final class BanglaToBanglishConverter {
         }
     }
 
-    public static Style getStyle() {
-        return currentStyle;
-    }
+    public static Style getStyle() { return currentStyle; }
 
-    public static void setDebugMode(boolean enable) {
-        debugMode = enable;
-    }
+    public static void setDebugMode(boolean enable) { debugMode = enable; }
+    public static boolean isDebugMode() { return debugMode; }
 
-    public static boolean isDebugMode() {
-        return debugMode;
-    }
+    public static void setConvertDigits(boolean enable) { convertDigits = enable; }
+    public static boolean isConvertDigits() { return convertDigits; }
 
-    public static void setConvertDigits(boolean enable) {
-        convertDigits = enable;
-    }
-
-    public static boolean isConvertDigits() {
-        return convertDigits;
-    }
-
-    public static void clearCache() {
-        CACHE.clear();
-    }
+    public static void clearCache() { CACHE.clear(); }
 
     private static void log(String message) {
-        if (debugMode) {
-            Log.d(TAG, message);
-        }
+        if (debugMode) Log.d(TAG, message);
     }
 
     public static void addDictionaryWord(String bangla, String banglish) {
         if (bangla == null || banglish == null) return;
-
-        String key = cleanUnicode(bangla);
-        DICTIONARY.put(key, banglish.trim());
-        CACHE.remove(key);
+        bangla = cleanUnicode(Normalizer.normalize(bangla, Normalizer.Form.NFC));
+        DICTIONARY.put(bangla.trim(), banglish.trim());
+        CACHE.remove(bangla);
     }
 
     public static void removeDictionaryWord(String bangla) {
         if (bangla == null) return;
-
-        String key = cleanUnicode(bangla);
-        DICTIONARY.remove(key);
-        CACHE.remove(key);
+        DICTIONARY.remove(bangla);
+        CACHE.remove(bangla);
     }
 
     public static void clearDictionary() {
@@ -600,34 +670,26 @@ public final class BanglaToBanglishConverter {
         CACHE.clear();
     }
 
-    public static void loadDictionaryFromAssets(
-            Context context,
-            String fileName) {
-
+    public static void loadDictionaryFromAssets(Context context, String fileName) {
         if (context == null || fileName == null) return;
 
-        try (InputStream is = context.getAssets().open(fileName);
-             BufferedReader reader =
-                     new BufferedReader(
-                             new InputStreamReader(
-                                     is,
-                                     StandardCharsets.UTF_8))) {
+        try {
+            InputStream is = context.getAssets().open(fileName);
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
 
             StringBuilder builder = new StringBuilder();
             String line;
-
             while ((line = reader.readLine()) != null) {
                 builder.append(line);
             }
+            reader.close();
 
             JSONObject object = new JSONObject(builder.toString());
             Iterator<String> keys = object.keys();
 
             while (keys.hasNext()) {
                 String key = keys.next();
-                DICTIONARY.put(
-                        cleanUnicode(key),
-                        object.getString(key));
+                DICTIONARY.put(cleanUnicode(key), object.getString(key));
             }
 
             CACHE.clear();
@@ -639,374 +701,202 @@ public final class BanglaToBanglishConverter {
 
     private static String cleanUnicode(String text) {
         if (text == null) return "";
-
-        text = Normalizer.normalize(
-                text,
-                Normalizer.Form.NFC);
-
-        // Remove zero-width formatting characters that otherwise make
-        // dictionary lookup fail for visually identical Bengali words.
+        text = Normalizer.normalize(text, Normalizer.Form.NFC);
         text = text.replace("\u200C", "");
         text = text.replace("\u200D", "");
         text = text.replace("\uFEFF", "");
-
         return text.trim();
     }
 
     private static String lookupDictionary(String word) {
         if (word == null || word.isEmpty()) return null;
 
-        String key = cleanUnicode(word);
+        word = cleanUnicode(word);
 
-        String cached = CACHE.get(key);
-        if (cached != null) return cached;
+        String cache = CACHE.get(word);
+        if (cache != null) return cache;
 
-        String value = DICTIONARY.get(key);
-        if (value == null) {
-            value = EXCEPTION.get(key);
+        String value = DICTIONARY.get(word);
+        if (value == null) value = EXCEPTION.get(word);
+
+        // NFC may represent Bengali "য়" as য + ়. Keep exception lookup
+        // compatible with both Unicode forms.
+        if (value == null && word.indexOf("\u09AF\u09BC") >= 0) {
+            value = EXCEPTION.get(word.replace("\u09AF\u09BC", "\u09DF"));
         }
 
-        if (value != null) {
-            CACHE.put(key, value);
-        }
+        if (value != null) CACHE.put(word, value);
 
         return value;
     }
 
-    private static String findLongestJoint(
-            String word,
-            int start) {
-
-        int maxLen = Math.min(
-                8,
-                word.length() - start);
-
+    private static String findLongestJoint(String word, int start) {
+        int maxLen = Math.min(8, word.length() - start);
         for (int len = maxLen; len >= 2; len--) {
-            String sub = word.substring(
-                    start,
-                    start + len);
-
-            if (JOINT.containsKey(sub)) {
-                return sub;
-            }
+            String sub = word.substring(start, start + len);
+            if (JOINT.containsKey(sub)) return sub;
         }
-
         return null;
     }
 
-    private static String findNuktaConsonant(
-            String word,
-            int start) {
-
-        if (start + 1 >= word.length()) return null;
-
-        String pair = word.substring(
-                start,
-                start + 2);
-
-        return NUKTA_CONSONANTS.containsKey(pair)
-                ? pair
-                : null;
-    }
-
-    /**
-     * Returns true when the next consonant is part of a following syllable
-     * with an explicit vowel sign. Example:
-     * ধর + ে -> the preceding consonant should not receive a second "o".
-     */
-    private static boolean nextIsVowelBearingConsonant(
-            String word,
-            int pos) {
-
-        if (pos < 0 || pos >= word.length()) return false;
-
-        char next = word.charAt(pos);
-
-        if (!CONSONANTS.containsKey(next)) {
-            return false;
+    private static String findNuktaConsonant(String word, int start) {
+        if (start + 1 < word.length()) {
+            String pair = word.substring(start, start + 2);
+            if (NUKTA_CONSONANTS.containsKey(pair)) return pair;
         }
-
-        int after = pos + 1;
-
-        return after < word.length()
-                && VOWEL_SIGNS.containsKey(
-                        word.charAt(after));
+        return null;
     }
 
-    /**
-     * A bare consonant normally carries an inherent "o" in Bangla.
-     * In Natural style, suppress it when the consonant is immediately before
-     * another syllable whose vowel is explicitly written.
+    /*
+     * Smart Schwa Suppression.
      *
-     * The first consonant is not suppressed merely because a later syllable
-     * exists; this keeps common forms such as "sokal" natural.
+     * Bengali orthography does not mark the inherent vowel ("schwa" / 'o')
+     * explicitly, but spoken Bangla frequently drops it in the middle of a
+     * word when a "bare" consonant (one carrying no vowel sign of its own)
+     * is immediately followed by another consonant that DOES carry its own
+     * explicit vowel sign - e.g. থাকলে is spoken "thakle", not "thakole".
+     *
+     * The very first consonant of a word/stem almost always keeps its
+     * inherent vowel in natural speech (e.g. সকাল -> "sokal", not "skal"),
+     * so this suppression is intentionally skipped when the consonant in
+     * question is at position 0 of the string being transliterated.
      */
-    private static boolean shouldAddInherentO(
-            String word,
-            int consonantStart,
-            int nextPos,
-            boolean suppressFinal) {
-
-        if (currentStyle != Style.NATURAL) {
-            return false;
-        }
-
-        if (nextPos < word.length()
-                && word.charAt(nextPos) == HASANTA) {
-            return false;
-        }
-
-        if (suppressFinal && nextPos >= word.length()) {
-            return false;
-        }
-
-        if (nextPos < word.length()
-                && nextIsVowelBearingConsonant(
-                        word,
-                        nextPos)) {
-            return false;
-        }
-
-        /*
-         * A consonant followed directly by another consonant usually forms
-         * the natural Banglish "C o C" pattern unless the conjunct itself
-         * was consumed by the joint-letter matcher.
-         */
-        return true;
+    private static boolean nextIsVowelBearingConsonant(String word, int pos, int len) {
+        if (pos >= len) return false;
+        char next = word.charAt(pos);
+        if (!CONSONANTS.containsKey(next)) return false;
+        int after = pos + 1;
+        return after < len && VOWEL_SIGNS.containsKey(word.charAt(after));
     }
 
+    /*
+     * Overload kept so the original API/logic remains intact.
+     * The second form is used when a suffix is attached to a stem and
+     * the stem's final consonant must not receive an extra inherent "o".
+     */
     private static String transliterateCore(String word) {
         return transliterateCore(word, false);
     }
 
-    private static String transliterateCore(
-            String word,
-            boolean suppressFinalInherentVowel) {
-
-        if (word == null || word.isEmpty()) {
-            return "";
-        }
+    /**
+     * Core transliteration.
+     *
+     * Important Natural-mode rules:
+     * 1) Explicit vowel signs are always authoritative.
+     * 2) A word-final bare consonant does NOT receive an invented "o".
+     * 3) Existing Bengali hasanta/joint spelling controls consonant clusters.
+     * 4) We do not globally delete "o" after conversion; that would break
+     *    words where the inherent vowel is genuinely pronounced.
+     */
+    private static String transliterateCore(String word, boolean suppressFinalInherentVowel) {
+        if (word == null || word.isEmpty()) return "";
 
         StringBuilder sb = new StringBuilder();
-
         int i = 0;
         int len = word.length();
 
         while (i < len) {
+            String jointMatch = findLongestJoint(word, i);
+            if (jointMatch != null) {
+                sb.append(JOINT.get(jointMatch));
+                i += jointMatch.length();
 
-            /*
-             * 1) Longest known conjunct first.
-             * This prevents sequences such as প্র, স্ব, ব্য, দ্য, etc.
-             * from being split into unrelated single consonants.
-             */
-            String joint = findLongestJoint(word, i);
-
-            if (joint != null) {
-
-                String value = JOINT.get(joint);
-                sb.append(value);
-
-                i += joint.length();
-
-                if (i < len
-                        && VOWEL_SIGNS.containsKey(
-                                word.charAt(i))) {
-
-                    sb.append(
-                            VOWEL_SIGNS.get(
-                                    word.charAt(i)));
+                if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
+                    sb.append(VOWEL_SIGNS.get(word.charAt(i)));
                     i++;
-
-                } else if (i < len
-                        && word.charAt(i) == HASANTA) {
-
+                } else if (i < len && word.charAt(i) == HASANTA) {
                     i++;
-
-                } else if (shouldAddInherentO(
-                        word,
-                        i - joint.length(),
-                        i,
-                        suppressFinalInherentVowel)) {
-
-                    sb.append('o');
+                } else if (currentStyle == Style.NATURAL
+                        && i < len
+                        && !(suppressFinalInherentVowel && i == len)) {
+                    sb.append("o");
                 }
-
                 continue;
             }
 
-            /*
-             * 2) Nukta forms: ড়, ঢ়, য়.
-             */
-            String nukta = findNuktaConsonant(word, i);
-
-            if (nukta != null) {
-
-                String value = NUKTA_CONSONANTS.get(nukta);
+            String nuktaMatch = findNuktaConsonant(word, i);
+            if (nuktaMatch != null) {
+                String value = NUKTA_CONSONANTS.get(nuktaMatch);
                 sb.append(value);
+                i += nuktaMatch.length();
 
-                i += nukta.length();
-
-                if (i < len
-                        && word.charAt(i) == HASANTA) {
+                if (i < len && word.charAt(i) == HASANTA) {
                     i++;
-
-                } else if (i < len
-                        && VOWEL_SIGNS.containsKey(
-                                word.charAt(i))) {
-
-                    sb.append(
-                            VOWEL_SIGNS.get(
-                                    word.charAt(i)));
+                } else if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
+                    sb.append(VOWEL_SIGNS.get(word.charAt(i)));
                     i++;
-
-                } else if (!"y".equals(value)
-                        && shouldAddInherentO(
-                                word,
-                                i - nukta.length(),
-                                i,
-                                suppressFinalInherentVowel)) {
-
-                    sb.append('o');
+                } else if (currentStyle == Style.NATURAL
+                        && !("y".equals(value) && i == len)
+                        && !(suppressFinalInherentVowel && i == len)) {
+                    sb.append("o");
                 }
-
                 continue;
             }
 
             char c = word.charAt(i);
 
-            /*
-             * 3) Hasanta outside a recognized conjunct.
-             */
             if (c == HASANTA) {
                 i++;
                 continue;
             }
 
-            /*
-             * 4) Consonants.
-             */
             if (CONSONANTS.containsKey(c)) {
-
-                int start = i;
-
-                String value = CONSONANTS.get(c);
-
-                /*
-                 * য-ফলা:
-                 * যখন য-এর আগে hasanta থাকে এবং সেটি joint matcher-এ ধরা
-                 * পড়েনি, তখন normal "j" নয়, "y" হবে।
-                 *
-                 * Example: সত্য -> sotyo.
-                 */
-                if (c == 'য'
-                        && start > 0
-                        && word.charAt(start - 1) == HASANTA) {
-                    value = "y";
-                }
-
-                /*
-                 * The sequence "স্ + ব" is the common স্ব form. If it was
-                 * not consumed by the joint matcher, keep it natural.
-                 */
-                sb.append(value);
+                sb.append(CONSONANTS.get(c));
                 i++;
 
-                if (i < len
-                        && word.charAt(i) == HASANTA) {
-
-                    /*
-                     * Do not append an inherent vowel before a hasanta.
-                     * The next loop iteration will consume the following
-                     * consonant or conjunct.
-                     */
+                if (i < len && word.charAt(i) == HASANTA) {
                     i++;
-
-                } else if (i < len
-                        && VOWEL_SIGNS.containsKey(
-                                word.charAt(i))) {
-
-                    sb.append(
-                            VOWEL_SIGNS.get(
-                                    word.charAt(i)));
+                } else if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
+                    sb.append(VOWEL_SIGNS.get(word.charAt(i)));
                     i++;
-
-                } else if (shouldAddInherentO(
-                        word,
-                        start,
-                        i,
-                        suppressFinalInherentVowel)) {
-
-                    sb.append('o');
+                } else if (currentStyle == Style.NATURAL
+                        && !(suppressFinalInherentVowel && i == len)
+                        && i < len
+                        && !(i > 1 && nextIsVowelBearingConsonant(word, i, len))) {
+                    // In natural speech, a medial consonant often loses its
+                    // inherent "o" before a following consonant that already
+                    // carries an explicit vowel: আজকে -> ajke.
+                    sb.append("o");
                 }
-
                 continue;
             }
 
-            /*
-             * 5) Independent vowels.
-             */
             if (VOWELS.containsKey(c)) {
                 sb.append(VOWELS.get(c));
                 i++;
                 continue;
             }
 
-            /*
-             * 6) Vowel signs that escaped a preceding consonant.
-             */
             if (VOWEL_SIGNS.containsKey(c)) {
                 sb.append(VOWEL_SIGNS.get(c));
                 i++;
                 continue;
             }
 
-            /*
-             * 7) Anuswar.
-             */
             if (c == ANUSWAR) {
                 sb.append("ng");
                 i++;
                 continue;
             }
 
-            /*
-             * 8) Visarga.
-             *
-             * Most common Bengali words containing visarga are better handled
-             * through the regression dictionary. For unknown words, "h" is
-             * the least destructive phonetic fallback.
-             */
             if (c == VISARGA) {
-                sb.append('h');
+                sb.append("h");
                 i++;
                 continue;
             }
 
-            /*
-             * 9) Chandrabindu/nukta are combining marks.
-             */
             if (c == CHANDRA || c == NUKTA) {
                 i++;
                 continue;
             }
 
-            /*
-             * 10) Bengali digits.
-             */
             if (DIGITS.containsKey(c)) {
-                if (convertDigits) {
-                    sb.append(DIGITS.get(c));
-                } else {
-                    sb.append(c);
-                }
+                if (convertDigits) sb.append(DIGITS.get(c));
+                else sb.append(c);
                 i++;
                 continue;
             }
 
-            /*
-             * 11) Unknown Bengali code point: preserve it rather than
-             * silently deleting data.
-             */
             sb.append(c);
             i++;
         }
@@ -1015,218 +905,78 @@ public final class BanglaToBanglishConverter {
     }
 
     private static String processWord(String word) {
-
-        if (word == null || word.isEmpty()) {
-            return word;
-        }
+        if (word == null || word.isEmpty()) return word;
 
         String cleaned = cleanUnicode(word);
 
-        /*
-         * Dictionary and regression rules always win.
-         * This is intentional: a known natural spelling must not be changed
-         * by a future general-rule modification.
-         */
-        String direct = lookupDictionary(cleaned);
-
+        // Exact user dictionary has highest priority.
+        String direct = DICTIONARY.get(cleaned);
         if (direct != null) {
+            CACHE.put(cleaned, direct);
             return direct;
         }
 
-        /*
-         * Handle a multi-word English loan phrase before single-word logic.
-         * Normally processSentence preserves spaces, so this branch mainly
-         * serves direct calls to processWord.
-         */
-        if ("সোশ্যাল মিডিয়া".equals(cleaned)
-                || "সোশ্যাল মিডিয়া".equals(cleaned)) {
-            return "social media";
+        // Built-in lexical exceptions are second priority.
+        direct = EXCEPTION.get(cleaned);
+        if (direct == null && cleaned.indexOf("\u09AF\u09BC") >= 0) {
+            direct = EXCEPTION.get(cleaned.replace("\u09AF\u09BC", "\u09DF"));
+        }
+        if (direct != null) {
+            CACHE.put(cleaned, direct);
+            return direct;
         }
 
-        /*
-         * Generic transliteration.
-         *
-         * We deliberately avoid the old prefix/suffix system here. Those
-         * generic rules could override word-internal phonetics and were one
-         * of the causes of unwanted "o"/suffix behavior.
-         */
-        String result = transliterateCore(cleaned);
-
-        /*
-         * Natural-mode cleanup is conservative. It does not blindly replace
-         * every "oo"/"aa" because those sequences can be legitimate in
-         * user-supplied text.
-         */
-        if (currentStyle == Style.NATURAL) {
-            result = normalizeNaturalResult(
-                    cleaned,
-                    result);
-        }
+        String result = transliterateCore(cleaned, true);
 
         CACHE.put(cleaned, result);
         return result;
     }
 
-    private static String normalizeNaturalResult(
-            String bangla,
-            String result) {
-
-        if (result == null || result.isEmpty()) {
-            return result;
-        }
-
-        /*
-         * These are safe normalizations for the exact vowel-doubling patterns
-         * that caused the documented regressions. The source Bengali word is
-         * checked so an arbitrary Latin sequence is never modified.
-         */
-        if ("আরও".equals(bangla)) return "aro";
-        if ("কাজও".equals(bangla)) return "kajo";
-        if ("খুবই".equals(bangla)) return "khuboi";
-        if ("রওনা".equals(bangla)) return "raona";
-
-        return result;
-    }
-
     private static String processGap(String gap) {
-
-        if (gap == null || gap.isEmpty()) {
-            return "";
-        }
+        if (gap == null || gap.isEmpty()) return "";
 
         StringBuilder sb = new StringBuilder();
-
-        Matcher matcher = WORD_PATTERN.matcher(gap);
-
+        Matcher wordMatcher = WORD_PATTERN.matcher(gap);
         int last = 0;
 
-        while (matcher.find()) {
-
-            sb.append(
-                    gap,
-                    last,
-                    matcher.start());
-
-            String word = matcher.group();
-
+        while (wordMatcher.find()) {
+            sb.append(gap, last, wordMatcher.start());
+            String word = wordMatcher.group();
             sb.append(processWord(word));
-
-            last = matcher.end();
+            last = wordMatcher.end();
         }
 
         sb.append(gap.substring(last));
-
         return sb.toString();
     }
 
     public static String processSentence(String text) {
-
-        if (text == null || text.isEmpty()) {
-            return "";
-        }
+        if (text == null || text.isEmpty()) return "";
 
         StringBuilder result = new StringBuilder();
-
-        Matcher preserveMatcher =
-                PRESERVE_PATTERN.matcher(text);
-
+        Matcher preserveMatcher = PRESERVE_PATTERN.matcher(text);
         int lastEnd = 0;
 
         while (preserveMatcher.find()) {
-
-            String gap = text.substring(
-                    lastEnd,
-                    preserveMatcher.start());
-
+            String gap = text.substring(lastEnd, preserveMatcher.start());
             result.append(processGap(gap));
-
-            /*
-             * URLs, e-mail addresses, mentions and hashtags are copied exactly
-             * as entered. This prevents the transliterator from corrupting
-             * technical/user-generated Latin text.
-             */
             result.append(preserveMatcher.group());
-
             lastEnd = preserveMatcher.end();
         }
 
-        result.append(
-                processGap(
-                        text.substring(lastEnd)));
-
+        result.append(processGap(text.substring(lastEnd)));
         return result.toString();
     }
 
     public static String convert(String text) {
-
-        if (text == null || text.isEmpty()) {
-            return "";
-        }
+        if (text == null || text.isEmpty()) return "";
 
         String cleaned = cleanUnicode(text);
-
         log("Converting: " + cleaned);
 
         String result = processSentence(cleaned);
-
         log("Result: " + result);
 
         return result;
     }
-
-    /*
-     * ---------------------------------------------------------------------
-     * Regression examples
-     * ---------------------------------------------------------------------
-     *
-     * The following examples are intentionally kept as comments so future
-     * maintenance can test them without changing the public API:
-     *
-     * সময়মতো      -> somoymoto
-     * ধরনের       -> dhoroner
-     * জীবনের      -> jiboner
-     * একাগ্রতা     -> ekagrota
-     * নিয়মিত      -> niyomit
-     * জগতের       -> jogoter
-     * বাস্তবে      -> bastobe
-     * ভ্রমণের      -> bhromoner
-     * গুজব        -> gujob
-     * উদ্যমে       -> udyome
-     * অর্জনের      -> orjoner
-     * বয়স         -> boyos
-     *
-     * উদ্দেশ্যে    -> uddeshe
-     * ভবিষ্যতে     -> bhobishote
-     * বিশ্বাসযোগ্য -> bishwasjoggo
-     * স্বাস্থ্যের  -> shasthyer
-     * মাধ্যমের     -> madhyomer
-     * সত্যতা       -> sotyota
-     * বাধ্য        -> baddho
-     * স্বপ্নের      -> sopner
-     *
-     * ফেসবুক       -> facebook
-     * সোশ্যাল মিডিয়া -> social media
-     * প্রোডাক্টের  -> product-er
-     * রেটিং        -> rating
-     * ট্যুরের      -> tour-er
-     * প্ল্যান       -> plan
-     * জিপিএস       -> GPS
-     * রুট          -> route
-     * বেলকনিতে     -> balconyte
-     * অ্যাপগুলো     -> appgulo
-     * স্মুথ        -> smooth
-     * পারফর্ম      -> perform
-     *
-     * আরও          -> aro
-     * কাজও         -> kajo
-     * খুবই         -> khuboi
-     * রওনা         -> raona
-     *
-     * নিঃস্বার্থ    -> nishwartho
-     *
-     * উঠল          -> uthlo
-     * আনন্দদায়ক    -> anondodayok
-     * সামাজিক       -> somajik
-     * প্রফুল্ল      -> profullo
-     */
 }
