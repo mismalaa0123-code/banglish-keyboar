@@ -454,6 +454,68 @@ public final class BanglaToBanglishConverter {
         EXCEPTION.put("নোটস", "notes");
         EXCEPTION.put("অ্যালার্ম", "alarm");
 
+        // --- Category E: high-frequency English / social-media loanwords ---
+        EXCEPTION.put("ফেসবুক", "facebook");
+        EXCEPTION.put("ফেসবুকে", "facebook-e");
+        EXCEPTION.put("ফেসবুকের", "facebook-er");
+        EXCEPTION.put("মেসেঞ্জার", "messenger");
+        EXCEPTION.put("মেসেঞ্জারে", "messenger-e");
+        EXCEPTION.put("মেসেঞ্জারের", "messenger-er");
+        EXCEPTION.put("টিকটক", "tiktok");
+        EXCEPTION.put("টিকটকে", "tiktok-e");
+        EXCEPTION.put("টিকটকের", "tiktoker");
+        EXCEPTION.put("টিকটকটা", "tiktok-ta");
+        EXCEPTION.put("ভিডিও", "video");
+        EXCEPTION.put("ভিডিওতে", "video-te");
+        EXCEPTION.put("ভিডিওর", "video-r");
+        EXCEPTION.put("ভিডিওটা", "video-ta");
+        EXCEPTION.put("ভিডিওটার", "video-tar");
+        EXCEPTION.put("লিংক", "link");
+        EXCEPTION.put("লিংকে", "link-e");
+        EXCEPTION.put("লিংকের", "link-er");
+        EXCEPTION.put("লিংকটা", "link-ta");
+        EXCEPTION.put("লিংকটাও", "link-tao");
+        EXCEPTION.put("ক্যাপশন", "caption");
+        EXCEPTION.put("ক্যাপশনে", "caption-e");
+        EXCEPTION.put("ক্যাপশনটা", "caption-ta");
+        EXCEPTION.put("পোস্ট", "post");
+        EXCEPTION.put("পোস্টে", "post-e");
+        EXCEPTION.put("পোস্টের", "post-er");
+        EXCEPTION.put("পোস্টটা", "post-ta");
+        EXCEPTION.put("পোস্টটার", "post-tar");
+        EXCEPTION.put("প্রোডাক্ট", "product");
+        EXCEPTION.put("প্রোডাক্টের", "product-er");
+        EXCEPTION.put("প্রোডাক্টে", "product-e");
+        EXCEPTION.put("রেটিং", "rating");
+        EXCEPTION.put("রেটিংটা", "rating-ta");
+        EXCEPTION.put("রুট", "route");
+        EXCEPTION.put("রুটটা", "route-ta");
+        EXCEPTION.put("স্মুথ", "smooth");
+        EXCEPTION.put("পারফর্ম", "perform");
+        EXCEPTION.put("প্ল্যান", "plan");
+        EXCEPTION.put("প্ল্যানটা", "plan-ta");
+        EXCEPTION.put("প্ল্যানের", "plan-er");
+        EXCEPTION.put("প্ল্যানে", "plan-e");
+        EXCEPTION.put("জিপিএস", "GPS");
+        EXCEPTION.put("গুগল", "google");
+        EXCEPTION.put("গুগলে", "google-e");
+        EXCEPTION.put("ম্যাপ", "map");
+        EXCEPTION.put("ম্যাপে", "map-e");
+        EXCEPTION.put("শেয়ার", "share");
+        EXCEPTION.put("শেয়ার", "share");
+
+        // --- Common conversational spellings found during regression tests ---
+        EXCEPTION.put("বলো", "bolo");
+        EXCEPTION.put("বলল", "bollo");
+        EXCEPTION.put("বললো", "bollo");
+        EXCEPTION.put("আসলে", "ashole");
+        EXCEPTION.put("সময়", "somoy");
+        EXCEPTION.put("সময়", "somoy");
+        EXCEPTION.put("সময়ের", "somoyer");
+        EXCEPTION.put("সময়ের", "somoyer");
+        EXCEPTION.put("সময়ে", "somoye");
+        EXCEPTION.put("সময়ে", "somoye");
+
         // --- Round 2 targeted fixes: English loanwords + Bengali suffixes ---
         EXCEPTION.put("ফেসবুক", "facebook");
         EXCEPTION.put("মেসেঞ্জার", "messenger");
