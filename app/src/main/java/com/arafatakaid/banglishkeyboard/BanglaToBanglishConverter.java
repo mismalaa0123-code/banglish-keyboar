@@ -62,12 +62,7 @@ public final class BanglaToBanglishConverter {
     private static final Map<String,String> DICTIONARY = new ConcurrentHashMap<>(65536);
     private static final Map<String,String> EXCEPTION = new ConcurrentHashMap<>(4096);
 
-    // Single-codepoint consonants (safe as char literals)
     private static final Map<Character,String> CONSONANTS = new HashMap<>();
-
-    // Consonants that are actually TWO Unicode codepoints (base + nukta),
-    // e.g. ড় (ড + ়), ঢ় (ঢ + ়). These CANNOT be char literals in Java,
-    // so they are stored as Strings and matched like joint letters.
     private static final Map<String,String> NUKTA_CONSONANTS = new LinkedHashMap<>();
 
     private static final Map<Character,String> VOWELS = new HashMap<>();
@@ -106,7 +101,6 @@ public final class BanglaToBanglishConverter {
         initializeExceptionDictionary();
     }
 
-    /* ====================================== INITIALIZE VOWELS ====================================== */
     private static void initializeVowels() {
         VOWELS.put('\u0985', "o");
         VOWELS.put('\u0986', "a");
@@ -121,7 +115,6 @@ public final class BanglaToBanglishConverter {
         VOWELS.put('\u0994', "ou");
     }
 
-    /* ====================================== INITIALIZE VOWEL SIGNS ====================================== */
     private static void initializeVowelSigns() {
         VOWEL_SIGNS.put('\u09BE', "a");
         VOWEL_SIGNS.put('\u09BF', "i");
@@ -135,7 +128,6 @@ public final class BanglaToBanglishConverter {
         VOWEL_SIGNS.put('\u09CC', "ou");
     }
 
-    /* ====================================== INITIALIZE DIGITS ====================================== */
     private static void initializeDigits() {
         DIGITS.put('\u09E6','0');
         DIGITS.put('\u09E7','1');
@@ -149,12 +141,6 @@ public final class BanglaToBanglishConverter {
         DIGITS.put('\u09EF','9');
     }
 
-    /* ====================================== INITIALIZE CONSONANTS ======================================
-     * NOTE: 'ড়' and 'ঢ়' are NOT included here because they are two-codepoint
-     * sequences (base consonant + nukta U+09BC) and are not valid single
-     * `char` literals in Java. They are handled in NUKTA_CONSONANTS instead.
-     * 'য়' (U+09DF, YYA) IS a single precomposed codepoint, so it stays here.
-     */
     private static void initializeConsonants() {
         CONSONANTS.put('\u0995', "k");
         CONSONANTS.put('\u0996', "kh");
@@ -199,16 +185,15 @@ public final class BanglaToBanglishConverter {
         CONSONANTS.put('\u09CE', "t");
     }
 
-    /* ====================================== INITIALIZE NUKTA CONSONANTS ======================================
-     * These are String-keyed (base consonant codepoint + U+09BC nukta codepoint)
-     * because they cannot legally be represented as a single Java `char`.
-     */
     private static void initializeNuktaConsonants() {
-        NUKTA_CONSONANTS.put("\u09A1\u09BC", "r");  // ড়
+        NUKTA_CONSONANTS.put("\u09A1\u09BC", "r");   // ড়
         NUKTA_CONSONANTS.put("\u09A2\u09BC", "rh");  // ঢ়
+
+        // Bengali "য়" is canonically represented as য + nukta (য + ়).
+        // It must be treated as y, not as the normal consonant য -> j.
+        NUKTA_CONSONANTS.put("\u09AF\u09BC", "y");  // য়
     }
 
-    /* ====================================== INITIALIZE JOINT LETTERS ====================================== */
     private static void initializeJointLetters() {
         JOINT.put("ক্ক", "kk");
         JOINT.put("ক্ত", "kt");
@@ -312,7 +297,6 @@ public final class BanglaToBanglishConverter {
         JOINT.put("হ্য", "hy");
     }
 
-    /* ====================================== INITIALIZE PREFIX RULES ====================================== */
     private static void initializePrefixRules() {
         PREFIX.put("অধি", "odhi");
         PREFIX.put("অতি", "oti");
@@ -340,7 +324,6 @@ public final class BanglaToBanglishConverter {
         PREFIX.put("সর্ব", "shorbo");
     }
 
-    /* ====================================== INITIALIZE SUFFIX RULES ====================================== */
     private static void initializeSuffixRules() {
         SUFFIX.put("গুলো", "gulo");
         SUFFIX.put("গুলি", "guli");
@@ -362,9 +345,13 @@ public final class BanglaToBanglishConverter {
         SUFFIX.put("ত্ব", "tto");
         SUFFIX.put("ময়", "moy");
         SUFFIX.put("র", "r");
+
+        // Verb endings: keep the stem's final consonant from gaining
+        // an unwanted inherent "o" before these suffixes.
+        SUFFIX.put("বে", "be");
+        SUFFIX.put("ব", "bo");
     }
 
-    /* ====================================== INITIALIZE EXCEPTION DICTIONARY ====================================== */
     private static void initializeExceptionDictionary() {
         EXCEPTION.put("আমি", "ami");
         EXCEPTION.put("আমরা", "amra");
@@ -432,7 +419,6 @@ public final class BanglaToBanglishConverter {
         EXCEPTION.put("ময়মনসিংহ", "mymensingh");
     }
 
-    /* ====================================== SETTINGS ====================================== */
     public static void setStyle(Style style) {
         if (style != null) {
             currentStyle = style;
@@ -454,7 +440,6 @@ public final class BanglaToBanglishConverter {
         if (debugMode) Log.d(TAG, message);
     }
 
-    /* ====================================== DICTIONARY ====================================== */
     public static void addDictionaryWord(String bangla, String banglish) {
         if (bangla == null || banglish == null) return;
         bangla = cleanUnicode(Normalizer.normalize(bangla, Normalizer.Form.NFC));
@@ -473,7 +458,6 @@ public final class BanglaToBanglishConverter {
         CACHE.clear();
     }
 
-    /* ====================================== LOAD DICTIONARY ====================================== */
     public static void loadDictionaryFromAssets(Context context, String fileName) {
         if (context == null || fileName == null) return;
 
@@ -503,7 +487,6 @@ public final class BanglaToBanglishConverter {
         }
     }
 
-    /* ====================================== CLEAN UNICODE ====================================== */
     private static String cleanUnicode(String text) {
         if (text == null) return "";
         text = Normalizer.normalize(text, Normalizer.Form.NFC);
@@ -513,7 +496,6 @@ public final class BanglaToBanglishConverter {
         return text.trim();
     }
 
-    /* ====================================== LOOKUP DICTIONARY ====================================== */
     private static String lookupDictionary(String word) {
         if (word == null || word.isEmpty()) return null;
 
@@ -530,7 +512,6 @@ public final class BanglaToBanglishConverter {
         return value;
     }
 
-    /* ====================================== LONGEST JOINT MATCH ====================================== */
     private static String findLongestJoint(String word, int start) {
         int maxLen = Math.min(8, word.length() - start);
         for (int len = maxLen; len >= 2; len--) {
@@ -540,7 +521,6 @@ public final class BanglaToBanglishConverter {
         return null;
     }
 
-    /* ====================================== NUKTA CONSONANT MATCH (ড়, ঢ়) ====================================== */
     private static String findNuktaConsonant(String word, int start) {
         if (start + 1 < word.length()) {
             String pair = word.substring(start, start + 2);
@@ -549,8 +529,16 @@ public final class BanglaToBanglishConverter {
         return null;
     }
 
-    /* ====================================== CORE TRANSLITERATION ====================================== */
+    /*
+     * Overload kept so the original API/logic remains intact.
+     * The second form is used when a suffix is attached to a stem and
+     * the stem's final consonant must not receive an extra inherent "o".
+     */
     private static String transliterateCore(String word) {
+        return transliterateCore(word, false);
+    }
+
+    private static String transliterateCore(String word, boolean suppressFinalInherentVowel) {
         if (word == null || word.isEmpty()) return "";
 
         StringBuilder sb = new StringBuilder();
@@ -559,7 +547,6 @@ public final class BanglaToBanglishConverter {
 
         while (i < len) {
 
-            // 1) Joint conjuncts (longest match first)
             String jointMatch = findLongestJoint(word, i);
             if (jointMatch != null) {
                 sb.append(JOINT.get(jointMatch));
@@ -570,16 +557,17 @@ public final class BanglaToBanglishConverter {
                     i++;
                 } else if (i < len && word.charAt(i) == HASANTA) {
                     // conjunct continues, no vowel added
-                } else if (currentStyle == Style.NATURAL) {
+                } else if (currentStyle == Style.NATURAL
+                        && i < len) {
                     sb.append("o");
                 }
                 continue;
             }
 
-            // 2) Nukta consonants (ড়, ঢ়) - two codepoints
             String nuktaMatch = findNuktaConsonant(word, i);
             if (nuktaMatch != null) {
-                sb.append(NUKTA_CONSONANTS.get(nuktaMatch));
+                String nuktaValue = NUKTA_CONSONANTS.get(nuktaMatch);
+                sb.append(nuktaValue);
                 i += nuktaMatch.length();
 
                 if (i < len && word.charAt(i) == HASANTA) {
@@ -587,7 +575,9 @@ public final class BanglaToBanglishConverter {
                 } else if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
                     sb.append(VOWEL_SIGNS.get(word.charAt(i)));
                     i++;
-                } else if (currentStyle == Style.NATURAL) {
+                } else if (currentStyle == Style.NATURAL
+                        && !"y".equals(nuktaValue)
+                        && i < len) {
                     sb.append("o");
                 }
                 continue;
@@ -609,7 +599,9 @@ public final class BanglaToBanglishConverter {
                 } else if (i < len && VOWEL_SIGNS.containsKey(word.charAt(i))) {
                     sb.append(VOWEL_SIGNS.get(word.charAt(i)));
                     i++;
-                } else if (currentStyle == Style.NATURAL) {
+                } else if (currentStyle == Style.NATURAL
+                        && i < len
+                        && !(suppressFinalInherentVowel && i == len)) {
                     sb.append("o");
                 }
                 continue;
@@ -658,7 +650,6 @@ public final class BanglaToBanglishConverter {
         return sb.toString();
     }
 
-    /* ====================================== PROCESS WORD ====================================== */
     private static String processWord(String word) {
         if (word == null || word.isEmpty()) return word;
 
@@ -704,7 +695,11 @@ public final class BanglaToBanglishConverter {
         } else {
             StringBuilder sb = new StringBuilder();
             if (prefixValue != null) sb.append(prefixValue);
-            sb.append(transliterateCore(core));
+
+            // When a suffix is separated from the stem, the stem's final
+            // consonant must not gain an extra inherent "o".
+            sb.append(transliterateCore(core, suffixMatch != null));
+
             if (suffixValue != null) sb.append(suffixValue);
             result = sb.toString();
         }
@@ -713,7 +708,6 @@ public final class BanglaToBanglishConverter {
         return result;
     }
 
-    /* ====================================== PROCESS GAP (non-preserved text) ====================================== */
     private static String processGap(String gap) {
         if (gap == null || gap.isEmpty()) return "";
 
@@ -732,7 +726,6 @@ public final class BanglaToBanglishConverter {
         return sb.toString();
     }
 
-    /* ====================================== PROCESS SENTENCE ====================================== */
     public static String processSentence(String text) {
         if (text == null || text.isEmpty()) return "";
 
@@ -751,7 +744,6 @@ public final class BanglaToBanglishConverter {
         return result.toString();
     }
 
-    /* ====================================== CONVERT (MAIN ENTRY) ====================================== */
     public static String convert(String text) {
         if (text == null || text.isEmpty()) return "";
 
