@@ -206,7 +206,6 @@ public final class BanglaToBanglishConverter {
     private static void initializeNuktaConsonants() {
         NUKTA_CONSONANTS.put("\u09A1\u09BC", "r");  // ড়
         NUKTA_CONSONANTS.put("\u09A2\u09BC", "rh");  // ঢ়
-        NUKTA_CONSONANTS.put("\u09AF\u09BC", "y");   // য়
     }
 
     /* ====================================== INITIALIZE JOINT LETTERS ====================================== */
@@ -226,6 +225,7 @@ public final class BanglaToBanglishConverter {
         JOINT.put("গ্ধ", "gdh");
         JOINT.put("গ্ন", "gn");
         JOINT.put("গ্ন্য", "gny");
+        JOINT.put("ন্য", "nny");
         JOINT.put("গ্ল", "gl");
         JOINT.put("গ্ব", "gb");
         JOINT.put("ঘ্ন", "ghn");
@@ -385,12 +385,25 @@ public final class BanglaToBanglishConverter {
         EXCEPTION.put("পৃথিবী", "prithibi");
 
         EXCEPTION.put("স্বাধীনতা", "swadhinota");
-        EXCEPTION.put("যাব", "jab");
         EXCEPTION.put("ঔষধ", "oshudh");
         EXCEPTION.put("ওষুধ", "oshudh");
         EXCEPTION.put("দায়িত্ব", "dayitto");
         EXCEPTION.put("বিজ্ঞান", "biggan");
         EXCEPTION.put("জ্ঞান", "gyan");
+        EXCEPTION.put("যাব", "jab");
+        EXCEPTION.put("হয়ে", "hoye");
+        EXCEPTION.put("সময়ে", "somoye");
+        EXCEPTION.put("অন্যায়", "onyay");
+        EXCEPTION.put("ন্যায়", "nyay");
+        EXCEPTION.put("কন্যা", "konnya");
+        EXCEPTION.put("ধন্যবাদ", "dhonnobad");
+        EXCEPTION.put("অন্যকে", "onnoke");
+        EXCEPTION.put("অন্যদের", "onnoder");
+        EXCEPTION.put("কন্যাকে", "konnake");
+        EXCEPTION.put("কন্যাদের", "konnader");
+        EXCEPTION.put("ন্যায়কে", "nyayke");
+        EXCEPTION.put("ধন্যবাদকে", "dhonnobadke");
+        EXCEPTION.put("সন্যাসী", "sannyasi");
         EXCEPTION.put("অজ্ঞ", "oggo");
         EXCEPTION.put("রাষ্ট্র", "rashtro");
         EXCEPTION.put("স্বাস্থ্য", "shastho");
