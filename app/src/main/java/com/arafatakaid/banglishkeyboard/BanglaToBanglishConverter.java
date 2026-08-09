@@ -466,6 +466,50 @@ public final class BanglaToBanglishConverter {
         EXCEPTION.put("নোটস", "notes");
         EXCEPTION.put("অ্যালার্ম", "alarm");
 
+
+        // ================================================================
+        // Round-2 targeted edge-case fixes
+        // These are lexical/context cases discovered after the first
+        // six-round regression pass. Keep them here rather than changing
+        // the global schwa rule, because a global change would break words
+        // such as "ekhono", "dujone", "thikmoto", and "pore gelo".
+        // ================================================================
+
+        // English loanwords that must remain English in natural Banglish.
+        EXCEPTION.put("ক্যাপশন", "caption");
+        EXCEPTION.put("ক্যাপশনটা", "caption-ta");
+        EXCEPTION.put("ক্যাপশনের", "caption-er");
+        EXCEPTION.put("ক্যাপশনে", "caption-e");
+        EXCEPTION.put("ক্যাপশনগুলো", "caption-gulo");
+
+        EXCEPTION.put("পোস্ট", "post");
+        EXCEPTION.put("পোস্টে", "post-e");
+        EXCEPTION.put("পোস্টের", "post-er");
+        EXCEPTION.put("পোস্টটা", "post-ta");
+
+        // Natural conversational lexical forms where a final inherent
+        // vowel is pronounced even though a bare-consonant rule cannot
+        // infer it safely.
+        EXCEPTION.put("গেল", "gelo");
+        EXCEPTION.put("গেলাম", "gelam");
+        EXCEPTION.put("গেলে", "gele");
+        EXCEPTION.put("ছোট্ট", "chhotto");
+        EXCEPTION.put("বড়", "boro");
+        EXCEPTION.put("বড়", "boro");
+        EXCEPTION.put("অনেকক্ষণ", "onek khon");
+        EXCEPTION.put("অনেকক্ষন", "onek khon");
+        EXCEPTION.put("সবগুলোর", "shobgulor");
+        EXCEPTION.put("সবগুলোরই", "shobgulori");
+        EXCEPTION.put("শময়", "somoy");
+
+        // Keep common conversational spellings consistent with the
+        // project's selected "somoy/shobar/shesh" convention.
+        EXCEPTION.put("সময়", "somoy");
+        EXCEPTION.put("সময়ের", "somoyer");
+        EXCEPTION.put("সময়ের", "somoyer");
+        EXCEPTION.put("সময়ে", "somoye");
+        EXCEPTION.put("সময়ে", "somoye");
+
         // ================================================================
         // Natural Banglish regression set
         // These are irregular/lexical spellings that cannot be derived
