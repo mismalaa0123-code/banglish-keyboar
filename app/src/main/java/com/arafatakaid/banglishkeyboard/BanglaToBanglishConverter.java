@@ -26,7 +26,7 @@ import java.util.regex.Matcher;
 /**
  * =====================================================
  * BanglaToBanglishConverter
- * Version : 3.3 (Targeted English + suffix fixes - Java 17 / Android compatible)
+ * Version : 3.4 (General English loanword recognition + suffix fixes - Java 17 / Android compatible)
  * Author  : Arafat Akaid
  * =====================================================
  */
@@ -550,6 +550,28 @@ public final class BanglaToBanglishConverter {
         EXCEPTION.put("মেসেঞ্জারে", "messenger-e");
         EXCEPTION.put("মেসেঞ্জারের", "messenger-er");
 
+        // General English loanword regression forms.
+        EXCEPTION.put("অ্যাপ", "app");
+        EXCEPTION.put("ইনস্টল", "install");
+        EXCEPTION.put("ফিচার", "feature");
+        EXCEPTION.put("ডাউনলোড", "download");
+        EXCEPTION.put("স্পিড", "speed");
+        EXCEPTION.put("ফাইল", "file");
+        EXCEPTION.put("ইউজার", "user");
+        EXCEPTION.put("কমেন্ট", "comment");
+        EXCEPTION.put("অ্যাপটা", "app-ta");
+        EXCEPTION.put("ফিচারগুলো", "feature-gulo");
+        EXCEPTION.put("ডাউনলোডের", "download-er");
+        EXCEPTION.put("স্পিডটা", "speed-ta");
+        EXCEPTION.put("ফাইলটা", "file-ta");
+        EXCEPTION.put("ইউজারদের", "user-der");
+        EXCEPTION.put("কমেন্টগুলো", "comment-gulo");
+        EXCEPTION.put("ব্যালকনিতে", "balcony-te");
+        EXCEPTION.put("ট্যুরের", "tour-er");
+        EXCEPTION.put("সোশ্যাল", "social");
+        EXCEPTION.put("মিডিয়া", "media");
+        EXCEPTION.put("মিডিয়া", "media");
+
         // Conversational forms found in the targeted tests.
         EXCEPTION.put("বলো", "bolo");
         EXCEPTION.put("বলল", "bollo");
@@ -823,6 +845,7 @@ public final class BanglaToBanglishConverter {
     // stem is preserved even when a conversational suffix is attached.
     private static String lookupEnglishLoanwordWithSuffix(String word) {
         final String[][] stems = {
+                // Core English/loanword stems from the original regression analysis
                 {"প্রোডাক্ট", "product"}, {"রিভিউ", "review"},
                 {"পারফরম্যান্স", "performance"}, {"ফেসবুক", "facebook"},
                 {"মেসেঞ্জার", "messenger"}, {"টিকটক", "tiktok"},
@@ -833,17 +856,32 @@ public final class BanglaToBanglishConverter {
                 {"লিংক", "link"}, {"গুগল", "google"},
                 {"ম্যাপ", "map"}, {"শেয়ার", "share"},
                 {"শেয়ার", "share"}, {"রিপ্লাই", "reply"},
-                {"অনলাইন", "online"}, {"ফোন", "phone"}
+                {"অনলাইন", "online"}, {"ফোন", "phone"},
+
+                // General high-frequency English loanwords found in testing.
+                // Keep the English stem intact; Bengali suffixes are handled
+                // generically below, e.g. অ্যাপটা -> app-ta, ইউজারদের -> user-der.
+                {"অ্যাপ", "app"}, {"ইনস্টল", "install"},
+                {"ফিচার", "feature"}, {"ডাউনলোড", "download"},
+                {"স্পিড", "speed"}, {"ফাইল", "file"},
+                {"ইউজার", "user"}, {"কমেন্ট", "comment"},
+                {"রিভিউ", "review"}, {"ইনবক্স", "inbox"},
+                {"চ্যাট", "chat"}, {"কল", "call"},
+                {"ভিডিও", "video"}, {"অডিও", "audio"},
+                {"ফটো", "photo"}, {"ছবি", "photo"},
+                {"ক্যামেরা", "camera"}, {"ব্যালকনি", "balcony"},
+                {"সোশ্যাল", "social"}, {"মিডিয়া", "media"},
+                {"মিডিয়া", "media"}, {"ট্যুর", "tour"},
+                {"জিপিএস", "GPS"}, {"জিপিএসের", "GPS-er"},
+                {"জিপিএসে", "GPS-e"}
         };
 
         final String[][] suffixes = {
-                {"গুলো", "-gulo"}, {"গুলোর", "-gulor"},
-                {"গুলোর", "-gulor"}, {"টার", "-tar"},
-                {"টা", "-ta"}, {"টি", "-ti"}, {"টির", "-tir"},
-                {"টির", "-tir"}, {"এর", "-er"}, {"ের", "-er"},
+                {"গুলোর", "-gulor"}, {"গুলো", "-gulo"}, {"গুলি", "-guli"},
+                {"দের", "-der"}, {"টির", "-tir"}, {"টার", "-tar"},
+                {"টা", "-ta"}, {"টি", "-ti"}, {"এর", "-er"}, {"ের", "-er"},
                 {"তে", "-te"}, {"ে", "-e"}, {"কে", "-ke"},
-                {"ও", "-o"}, {"র", "-r"}, {"রা", "-ra"},
-                {"কে", "-ke"}
+                {"ও", "-o"}, {"র", "-r"}, {"রা", "-ra"}
         };
 
         for (String[] stem : stems) {
