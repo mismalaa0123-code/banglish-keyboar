@@ -447,6 +447,11 @@ public final class BanglaToBanglishConverter {
         EXCEPTION.put("ব্যাকআপ", "backup");
         EXCEPTION.put("ক্যামেরা", "camera");
         EXCEPTION.put("রিভিউ", "review");
+        EXCEPTION.put("রিভিউগুলো", "review-gulo");
+        EXCEPTION.put("প্রোডাক্টটা", "product-ta");
+        EXCEPTION.put("প্রোডাক্টগুলো", "product-gulo");
+        EXCEPTION.put("পারফরম্যান্স", "performance");
+        EXCEPTION.put("পারফরম্যান্সও", "performance-o");
         EXCEPTION.put("ফোন", "phone");
         EXCEPTION.put("চার্জ", "charge");
         EXCEPTION.put("রেসিপি", "recipe");
@@ -812,10 +817,56 @@ public final class BanglaToBanglishConverter {
         return sb.toString();
     }
 
+
+    // Systematic English-loanword + Bangla-suffix handling.
+    // This runs before normal phonetic transliteration so a known English
+    // stem is preserved even when a conversational suffix is attached.
+    private static String lookupEnglishLoanwordWithSuffix(String word) {
+        final String[][] stems = {
+                {"প্রোডাক্ট", "product"}, {"রিভিউ", "review"},
+                {"পারফরম্যান্স", "performance"}, {"ফেসবুক", "facebook"},
+                {"মেসেঞ্জার", "messenger"}, {"টিকটক", "tiktok"},
+                {"ভিডিও", "video"}, {"ক্যাপশন", "caption"},
+                {"পোস্ট", "post"}, {"রেটিং", "rating"},
+                {"রুট", "route"}, {"স্মুথ", "smooth"},
+                {"পারফর্ম", "perform"}, {"প্ল্যান", "plan"},
+                {"লিংক", "link"}, {"গুগল", "google"},
+                {"ম্যাপ", "map"}, {"শেয়ার", "share"},
+                {"শেয়ার", "share"}, {"রিপ্লাই", "reply"},
+                {"অনলাইন", "online"}, {"ফোন", "phone"}
+        };
+
+        final String[][] suffixes = {
+                {"গুলো", "-gulo"}, {"গুলোর", "-gulor"},
+                {"গুলোর", "-gulor"}, {"টার", "-tar"},
+                {"টা", "-ta"}, {"টি", "-ti"}, {"টির", "-tir"},
+                {"টির", "-tir"}, {"এর", "-er"}, {"ের", "-er"},
+                {"তে", "-te"}, {"ে", "-e"}, {"কে", "-ke"},
+                {"ও", "-o"}, {"র", "-r"}, {"রা", "-ra"},
+                {"কে", "-ke"}
+        };
+
+        for (String[] stem : stems) {
+            if (word.equals(stem[0])) return stem[1];
+            if (!word.startsWith(stem[0]) || word.length() <= stem[0].length()) continue;
+            String suffix = word.substring(stem[0].length());
+            for (String[] pair : suffixes) {
+                if (suffix.equals(pair[0])) return stem[1] + pair[1];
+            }
+        }
+        return null;
+    }
+
     private static String processWord(String word) {
         if (word == null || word.isEmpty()) return word;
 
         String cleaned = cleanUnicode(word);
+
+        String englishLoan = lookupEnglishLoanwordWithSuffix(cleaned);
+        if (englishLoan != null) {
+            CACHE.put(cleaned, englishLoan);
+            return englishLoan;
+        }
 
         String direct = lookupDictionary(cleaned);
         if (direct != null) return direct;
