@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<input-method
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.arafatkaid.banglishkeyboard.MainActivity">
+
+    <subtype
+        android:label="বাংলা"
+        android:imeSubtypeLocale="bn"
+        android:imeSubtypeMode="keyboard" />
+
+</input-method>
