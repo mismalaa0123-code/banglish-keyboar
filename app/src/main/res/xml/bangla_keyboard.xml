@@ -142,7 +142,12 @@
         <Key
             android:codes="-100"
             android:keyLabel="🌐"
-            android:keyWidth="12%p" />
+            android:keyWidth="10%p" />
+
+        <Key
+            android:codes="-101"
+            android:keyLabel="🎤"
+            android:keyWidth="10%p" />
 
         <Key
             android:codes="44"
@@ -152,7 +157,7 @@
         <Key
             android:codes="32"
             android:keyLabel="স্পেস"
-            android:keyWidth="46%p"
+            android:keyWidth="40%p"
             android:isRepeatable="true" />
 
         <Key
@@ -163,7 +168,7 @@
         <Key
             android:codes="-5"
             android:keyLabel="⌫"
-            android:keyWidth="12%p" />
+            android:keyWidth="10%p" />
 
         <Key
             android:codes="10"
