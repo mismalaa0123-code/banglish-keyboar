@@ -13,8 +13,6 @@ public class EnglishIME extends InputMethodService
         implements KeyboardView.OnKeyboardActionListener {
 
     private static final int KEYCODE_GLOBE = -100;
-    private static final int KEYCODE_DELETE = -5;
-    private static final int KEYCODE_SHIFT = -1;
 
     private KeyboardView keyboardView;
     private Keyboard englishKeyboard;
@@ -25,12 +23,19 @@ public class EnglishIME extends InputMethodService
         View root = LayoutInflater.from(this)
                 .inflate(R.layout.english_keyboard_view, null);
 
-        keyboardView = root.findViewById(R.id.english_keyboard_view);
+        keyboardView = root.findViewById(
+                R.id.english_keyboard_view
+        );
 
-        englishKeyboard = new Keyboard(this, R.xml.english_qwerty);
+        englishKeyboard = new Keyboard(
+                this,
+                R.xml.english_qwerty
+        );
 
         keyboardView.setKeyboard(englishKeyboard);
+
         keyboardView.setOnKeyboardActionListener(this);
+
         keyboardView.setPreviewEnabled(false);
 
         return root;
@@ -49,38 +54,48 @@ public class EnglishIME extends InputMethodService
 
             switch (primaryCode) {
 
-                case KEYCODE_DELETE:
+                case Keyboard.KEYCODE_DELETE:
+
                     ic.deleteSurroundingText(1, 0);
+
                     break;
 
-                case KEYCODE_SHIFT:
 
-                    boolean newShiftState =
-                            !englishKeyboard.isShifted();
+                case Keyboard.KEYCODE_SHIFT:
 
-                    englishKeyboard.setShifted(newShiftState);
+                    englishKeyboard.setShifted(
+                            !englishKeyboard.isShifted()
+                    );
 
                     keyboardView.invalidateAllKeys();
 
                     break;
 
-                case 10:
+
+                case Keyboard.KEYCODE_DONE:
+
                     ic.commitText("\n", 1);
+
                     break;
 
+
                 case KEYCODE_GLOBE:
+
                     showKeyboardPicker();
+
                     break;
+
 
                 default:
 
                     if (primaryCode >= 0 &&
                             primaryCode <= Character.MAX_VALUE) {
 
-                        char character = (char) primaryCode;
+                        char character =
+                                (char) primaryCode;
 
-                        if (englishKeyboard.isShifted() &&
-                                Character.isLetter(character)) {
+                        if (englishKeyboard.isShifted()
+                                && Character.isLetter(character)) {
 
                             character =
                                     Character.toUpperCase(character);
@@ -92,9 +107,9 @@ public class EnglishIME extends InputMethodService
                         );
 
                         /*
-                         * Normal English keyboard behavior:
+                         * Normal keyboard behaviour:
                          * after typing one uppercase letter,
-                         * Shift automatically turns off.
+                         * Shift turns off.
                          */
                         if (englishKeyboard.isShifted()) {
 
@@ -108,9 +123,10 @@ public class EnglishIME extends InputMethodService
             }
 
         } catch (Exception ignored) {
-            // Keyboard must never crash the input method.
+            // Prevent keyboard service from crashing.
         }
     }
+
 
     private void showKeyboardPicker() {
 
@@ -130,6 +146,7 @@ public class EnglishIME extends InputMethodService
         }
     }
 
+
     @Override
     public void onText(CharSequence text) {
 
@@ -137,34 +154,41 @@ public class EnglishIME extends InputMethodService
             return;
         }
 
-        InputConnection ic = getCurrentInputConnection();
+        InputConnection ic =
+                getCurrentInputConnection();
 
         if (ic != null) {
             ic.commitText(text, 1);
         }
     }
 
+
     @Override
     public void onPress(int primaryCode) {
     }
+
 
     @Override
     public void onRelease(int primaryCode) {
     }
 
+
     @Override
     public void swipeLeft() {
     }
+
 
     @Override
     public void swipeRight() {
     }
 
+
     @Override
     public void swipeDown() {
     }
 
+
     @Override
     public void swipeUp() {
     }
-  }
+        }
