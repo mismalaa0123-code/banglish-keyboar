@@ -2,7 +2,7 @@
 
 <input-method
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:settingsActivity="com.arafatkaid.banglishkeyboard.MainActivity">
+    android:settingsActivity="com.arafatakaid.banglishkeyboard.MainActivity">
 
     <subtype
         android:label="বাংলা"
