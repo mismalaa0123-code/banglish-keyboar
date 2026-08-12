@@ -23,488 +23,1016 @@ public class BanglishIME extends InputMethodService
 
     private static final String TAG = "BanglishIME";
 
-    private static final int KEYCODE_MIC = -100;
+    /*
+     * IMPORTANT:
+     * -100 = Globe / language switch
+     * -101 = Voice
+     * -5   = Backspace
+     * -1   = Shift
+     * -201 = Copy
+     * -202 = Paste
+     *
+     * qwerty.xml must use the same codes.
+     */
+    private static final int KEYCODE_GLOBE = -100;
+    private static final int KEYCODE_MIC = -101;
     private static final int KEYCODE_DELETE = -5;
     private static final int KEYCODE_SHIFT = -1;
     private static final int KEYCODE_COPY = -201;
     private static final int KEYCODE_PASTE = -202;
 
-    /*
-     * Bangla Unicode block.
-     * This pattern deliberately accepts combining marks as part of a Bengali
-     * token so কার/হসন্ত/ফলা ভেঙে না যায়।
-     */
     private static final String BANGLA_CHAR_CLASS = "\\u0980-\\u09FF";
+
     private static final Pattern LAST_BANGLA_TOKEN =
             Pattern.compile("[" + BANGLA_CHAR_CLASS + "]+");
 
-    /*
-     * A Bengali run may contain spaces between words. It is used only when
-     * the user explicitly presses Convert. This allows phrase dictionary
-     * entries such as "আমি জানি না" to be considered together.
-     */
     private static final Pattern LAST_BANGLA_RUN =
-            Pattern.compile("[" + BANGLA_CHAR_CLASS + "]+(?:\\s+[" +
-                    BANGLA_CHAR_CLASS + "]+)*");
+            Pattern.compile(
+                    "[" + BANGLA_CHAR_CLASS + "]+(?:\\s+["
+                            + BANGLA_CHAR_CLASS + "]+)*"
+            );
 
     private KeyboardView keyboardView;
     private Keyboard qwertyKeyboard;
     private TextView suggestionText;
 
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Handler mainHandler =
+            new Handler(Looper.getMainLooper());
 
     @Override
     public void onCreate() {
         super.onCreate();
 
         try {
-            /*
-             * Load the shared dictionary once when the IME service starts.
-             * BanglaToBanglishConverter keeps its own cached representation,
-             * so this does not mean the JSON is parsed on every key press.
-             */
-            DictionaryHelper dh = DictionaryHelper.getInstance(this);
-            BanglaToBanglishConverter.loadDictionaryFromAssets(this, "dictionary.json");
+            DictionaryHelper dh =
+                    DictionaryHelper.getInstance(this);
+
+            BanglaToBanglishConverter.loadDictionaryFromAssets(
+                    this,
+                    "dictionary.json"
+            );
 
             try {
-                Log.d(TAG, "Dictionary loaded entries: " + dh.getWordCount());
+                Log.d(
+                        TAG,
+                        "Dictionary loaded entries: "
+                                + dh.getWordCount()
+                );
             } catch (Exception e) {
-                Log.w(TAG, "Dictionary count unavailable: " + e.getMessage());
+                Log.w(
+                        TAG,
+                        "Dictionary count unavailable: "
+                                + e.getMessage()
+                );
             }
+
         } catch (Exception e) {
-            /*
-             * A dictionary problem must not crash the keyboard service.
-             * The converter's rule fallback can still be used.
-             */
-            Log.e(TAG, "Dictionary initialization failed", e);
+            Log.e(
+                    TAG,
+                    "Dictionary initialization failed",
+                    e
+            );
         }
     }
 
     @Override
     public View onCreateInputView() {
-        View root = LayoutInflater.from(this).inflate(R.layout.keyboard_view, null);
 
-        suggestionText = root.findViewById(R.id.preview_text_view);
-        Button convertButton = root.findViewById(R.id.btn_convert);
-        Button micButton = root.findViewById(R.id.btn_mic);
-        keyboardView = root.findViewById(R.id.keyboard_view);
+        View root = LayoutInflater.from(this)
+                .inflate(
+                        R.layout.keyboard_view,
+                        null
+                );
 
-        qwertyKeyboard = new Keyboard(this, R.xml.qwerty);
-        keyboardView.setKeyboard(qwertyKeyboard);
-        keyboardView.setOnKeyboardActionListener(this);
+        suggestionText =
+                root.findViewById(
+                        R.id.preview_text_view
+                );
+
+        Button convertButton =
+                root.findViewById(
+                        R.id.btn_convert
+                );
+
+        Button micButton =
+                root.findViewById(
+                        R.id.btn_mic
+                );
+
+        Button copyButton =
+                root.findViewById(
+                        R.id.btn_copy
+                );
+
+        Button pasteButton =
+                root.findViewById(
+                        R.id.btn_paste
+                );
+
+        keyboardView =
+                root.findViewById(
+                        R.id.keyboard_view
+                );
+
+        qwertyKeyboard =
+                new Keyboard(
+                        this,
+                        R.xml.qwerty
+                );
+
+        keyboardView.setKeyboard(
+                qwertyKeyboard
+        );
+
+        keyboardView.setOnKeyboardActionListener(
+                this
+        );
+
+        keyboardView.setPreviewEnabled(false);
 
         if (convertButton != null) {
-            convertButton.setOnClickListener(v -> convertCurrentText());
+            convertButton.setOnClickListener(
+                    v -> convertCurrentText()
+            );
         }
 
         if (micButton != null) {
-            micButton.setOnClickListener(v -> startVoiceInput());
+            micButton.setOnClickListener(
+                    v -> startVoiceInput()
+            );
+        }
+
+        /*
+         * Copy button:
+         * Uses Android's real text-selection copy action.
+         * If nothing is selected, Android simply does nothing.
+         */
+        if (copyButton != null) {
+            copyButton.setOnClickListener(
+                    v -> copySelectedText()
+            );
+        }
+
+        /*
+         * Paste button:
+         * First tries InputConnection's paste action.
+         * Falls back to the clipboard directly if necessary.
+         */
+        if (pasteButton != null) {
+            pasteButton.setOnClickListener(
+                    v -> pasteClipboard()
+            );
         }
 
         if (suggestionText != null) {
-            suggestionText.setOnClickListener(v -> {
-                String text = suggestionText.getText() != null
-                        ? suggestionText.getText().toString().trim()
-                        : "";
+            suggestionText.setOnClickListener(
+                    v -> {
 
-                if (isUsableVoiceOrPreviewText(text)) {
-                    processBanglaText(text, 0);
-                }
-            });
+                        String text =
+                                suggestionText.getText() != null
+                                        ? suggestionText
+                                        .getText()
+                                        .toString()
+                                        .trim()
+                                        : "";
+
+                        if (isUsableVoiceOrPreviewText(text)) {
+                            processBanglaText(
+                                    text,
+                                    0
+                            );
+                        }
+                    }
+            );
         }
 
         return root;
     }
 
-    private static boolean isUsableVoiceOrPreviewText(String text) {
-        if (text == null || text.trim().isEmpty()) return false;
+    private static boolean isUsableVoiceOrPreviewText(
+            String text
+    ) {
+
+        if (text == null ||
+                text.trim().isEmpty()) {
+            return false;
+        }
 
         String t = text.trim();
+
         return !t.contains("Listening")
                 && !t.contains("এখানে বাংলা")
-                && !t.contains("Voice input");
+                && !t.contains("Voice input")
+                && !t.contains("Voice input চালু করা যায়নি");
     }
 
-    /**
-     * Returns the last Bengali-only token.
-     * Kept for safe single-word conversion when the cursor is at the end.
-     */
-    private static String extractLastBanglaToken(String text) {
-        if (text == null || text.isEmpty()) return "";
+    private static String extractLastBanglaToken(
+            String text
+    ) {
 
-        Matcher m = LAST_BANGLA_TOKEN.matcher(text);
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        Matcher matcher =
+                LAST_BANGLA_TOKEN.matcher(text);
+
         String last = "";
 
-        while (m.find()) {
-            last = m.group();
+        while (matcher.find()) {
+            last = matcher.group();
         }
 
         return last;
     }
 
-    /**
-     * Returns the last contiguous Bengali phrase before the cursor.
-     *
-     * Example:
-     * "আমি আজ ভালো আছি" -> "আমি আজ ভালো আছি"
-     *
-     * This is intentionally limited to Bengali words separated by whitespace.
-     * It will not consume an English word, URL, email, or punctuation block.
-     */
-    private static String extractLastBanglaRun(String text) {
-        if (text == null || text.isEmpty()) return "";
+    private static String extractLastBanglaRun(
+            String text
+    ) {
 
-        Matcher m = LAST_BANGLA_RUN.matcher(text);
-        String last = "";
-
-        while (m.find()) {
-            last = m.group();
+        if (text == null || text.isEmpty()) {
+            return "";
         }
 
-        return last != null ? last.trim() : "";
+        Matcher matcher =
+                LAST_BANGLA_RUN.matcher(text);
+
+        String last = "";
+
+        while (matcher.find()) {
+            last = matcher.group();
+        }
+
+        return last != null
+                ? last.trim()
+                : "";
     }
 
-    /**
-     * Returns the UTF-16 length of the exact run that was found immediately
-     * before the cursor. This is important because deleteSurroundingText()
-     * works in Java UTF-16 code units, not Unicode code points.
-     */
-    private static int findLastBanglaRunLength(String text, String run) {
-        if (text == null || run == null || run.isEmpty()) return 0;
+    private static int findLastBanglaRunLength(
+            String text,
+            String run
+    ) {
+
+        if (text == null ||
+                run == null ||
+                run.isEmpty()) {
+            return 0;
+        }
 
         int end = text.length();
 
-        // Remove only trailing whitespace from the inspected text.
-        while (end > 0 && Character.isWhitespace(text.charAt(end - 1))) {
+        while (end > 0 &&
+                Character.isWhitespace(
+                        text.charAt(end - 1)
+                )) {
             end--;
         }
 
         int start = end;
 
         while (start > 0) {
-            char c = text.charAt(start - 1);
+
+            char c =
+                    text.charAt(start - 1);
 
             if (isBanglaChar(c)) {
+
                 start--;
+
             } else if (Character.isWhitespace(c)) {
-                // Continue across spaces only if Bengali text exists before it.
+
                 int j = start - 1;
-                while (j >= 0 && Character.isWhitespace(text.charAt(j))) {
+
+                while (j >= 0 &&
+                        Character.isWhitespace(
+                                text.charAt(j)
+                        )) {
                     j--;
                 }
 
-                if (j >= 0 && isBanglaChar(text.charAt(j))) {
+                if (j >= 0 &&
+                        isBanglaChar(
+                                text.charAt(j)
+                        )) {
+
                     start = j + 1;
-                    // Continue scanning the Bengali word before the space.
-                    while (start > 0 && isBanglaChar(text.charAt(start - 1))) {
+
+                    while (start > 0 &&
+                            isBanglaChar(
+                                    text.charAt(start - 1)
+                            )) {
                         start--;
                     }
+
                 } else {
                     break;
                 }
+
             } else {
                 break;
             }
         }
 
-        return Math.max(0, end - start);
+        return Math.max(
+                0,
+                end - start
+        );
     }
 
-    private static boolean isBanglaChar(char c) {
-        return c >= '\u0980' && c <= '\u09FF';
+    private static boolean isBanglaChar(
+            char c
+    ) {
+
+        return c >= '\u0980' &&
+                c <= '\u09FF';
     }
 
-    /**
-     * Convert the Bengali phrase immediately before the cursor.
-     *
-     * Phrase matching is useful here because the converter supports
-     * multi-word dictionary entries.
-     */
     private void convertCurrentText() {
-        InputConnection ic = getCurrentInputConnection();
+
+        InputConnection ic =
+                getCurrentInputConnection();
 
         if (ic == null) {
-            showToast("Input connection পাওয়া যায়নি");
+            showToast(
+                    "Input connection পাওয়া যায়নি"
+            );
             return;
         }
 
-        CharSequence before = ic.getTextBeforeCursor(1000, 0);
+        CharSequence before =
+                ic.getTextBeforeCursor(
+                        1000,
+                        0
+                );
 
-        if (before != null && before.length() > 0) {
-            String fullBefore = before.toString();
+        if (before != null &&
+                before.length() > 0) {
 
-            // First try a Bengali phrase, not just the final word.
-            String lastRun = extractLastBanglaRun(fullBefore);
+            String fullBefore =
+                    before.toString();
+
+            String lastRun =
+                    extractLastBanglaRun(
+                            fullBefore
+                    );
 
             if (!lastRun.isEmpty()) {
-                int runLength = findLastBanglaRunLength(fullBefore, lastRun);
+
+                int runLength =
+                        findLastBanglaRunLength(
+                                fullBefore,
+                                lastRun
+                        );
 
                 if (runLength > 0) {
-                    processBanglaText(lastRun, runLength);
+
+                    processBanglaText(
+                            lastRun,
+                            runLength
+                    );
+
                     return;
                 }
             }
 
-            // Fallback: final Bengali token.
-            String lastToken = extractLastBanglaToken(fullBefore);
+            String lastToken =
+                    extractLastBanglaToken(
+                            fullBefore
+                    );
 
             if (!lastToken.isEmpty()) {
-                processBanglaText(lastToken, lastToken.length());
+
+                processBanglaText(
+                        lastToken,
+                        lastToken.length()
+                );
+
                 return;
             }
 
-            showToast("কার্সরের আগে কোনো বাংলা লেখা পাওয়া যায়নি");
+            showToast(
+                    "কার্সরের আগে কোনো বাংলা লেখা পাওয়া যায়নি"
+            );
+
             return;
         }
 
-        // Voice preview fallback.
         if (suggestionText != null) {
-            String voiceText = suggestionText.getText() != null
-                    ? suggestionText.getText().toString().trim()
-                    : "";
 
-            if (isUsableVoiceOrPreviewText(voiceText)) {
-                processBanglaText(voiceText, 0);
+            String voiceText =
+                    suggestionText.getText() != null
+                            ? suggestionText
+                            .getText()
+                            .toString()
+                            .trim()
+                            : "";
+
+            if (isUsableVoiceOrPreviewText(
+                    voiceText
+            )) {
+
+                processBanglaText(
+                        voiceText,
+                        0
+                );
+
                 return;
             }
         }
 
-        showToast("কোনো বাংলা text পাওয়া যায়নি");
+        showToast(
+                "কোনো বাংলা text পাওয়া যায়নি"
+        );
     }
 
-    public void handleVoiceResult(String recognizedBangla) {
-        mainHandler.post(() -> {
-            if (suggestionText != null && recognizedBangla != null) {
-                suggestionText.setText(recognizedBangla);
-            }
-        });
+    public void handleVoiceResult(
+            String recognizedBangla
+    ) {
+
+        mainHandler.post(
+                () -> {
+
+                    if (suggestionText != null &&
+                            recognizedBangla != null) {
+
+                        suggestionText.setText(
+                                recognizedBangla
+                        );
+                    }
+                }
+        );
     }
 
-    public void handleVoicePartialResult(String partialText) {
-        mainHandler.post(() -> {
-            if (suggestionText != null && partialText != null) {
-                suggestionText.setText(partialText);
-            }
-        });
+    public void handleVoicePartialResult(
+            String partialText
+    ) {
+
+        mainHandler.post(
+                () -> {
+
+                    if (suggestionText != null &&
+                            partialText != null) {
+
+                        suggestionText.setText(
+                                partialText
+                        );
+                    }
+                }
+        );
     }
 
-    /**
-     * Dictionary-first processing.
-     *
-     * The IME does not attempt fuzzy correction here. The converter itself
-     * owns phrase/rule/exception fallback logic.
-     */
-    private void processBanglaText(String banglaText, int banglaLength) {
-        String cleanText = banglaText != null ? banglaText.trim() : "";
+    private void processBanglaText(
+            String banglaText,
+            int banglaLength
+    ) {
 
-        if (cleanText.isEmpty()) return;
+        String cleanText =
+                banglaText != null
+                        ? banglaText.trim()
+                        : "";
+
+        if (cleanText.isEmpty()) {
+            return;
+        }
 
         String banglishResult = null;
 
         try {
-            banglishResult = DictionaryHelper.getInstance(this).lookup(cleanText);
+
+            banglishResult =
+                    DictionaryHelper
+                            .getInstance(this)
+                            .lookup(cleanText);
+
         } catch (Exception e) {
-            Log.w(TAG, "Dictionary lookup failed; using converter", e);
+
+            Log.w(
+                    TAG,
+                    "Dictionary lookup failed; using converter",
+                    e
+            );
         }
 
-        Log.d(TAG, "Lookup for '" + cleanText + "' -> "
-                + (banglishResult != null ? banglishResult : "null"));
+        if (banglishResult == null ||
+                banglishResult.trim().isEmpty()) {
 
-        if (banglishResult == null || banglishResult.trim().isEmpty()) {
             try {
-                banglishResult = BanglaToBanglishConverter.convert(cleanText);
+
+                banglishResult =
+                        BanglaToBanglishConverter
+                                .convert(cleanText);
+
             } catch (Exception e) {
-                Log.e(TAG, "Converter failed for: " + cleanText, e);
 
-                // Never crash the IME. Keep the original text as a last resort.
-                banglishResult = cleanText;
+                Log.e(
+                        TAG,
+                        "Converter failed for: "
+                                + cleanText,
+                        e
+                );
+
+                banglishResult =
+                        cleanText;
             }
-
-            Log.d(TAG, "Converted via rules: '" + cleanText
-                    + "' -> '" + banglishResult + "'");
         }
 
-        if (banglishResult == null || banglishResult.trim().isEmpty()) {
-            banglishResult = cleanText;
+        if (banglishResult == null ||
+                banglishResult.trim().isEmpty()) {
+
+            banglishResult =
+                    cleanText;
         }
 
-        commitBanglish(banglishResult, banglaLength);
+        commitBanglish(
+                banglishResult,
+                banglaLength
+        );
     }
 
-    /**
-     * Replaces exactly the requested UTF-16 length immediately before cursor.
-     * A single trailing space is added for converted text unless the result
-     * already ends with whitespace.
-     */
-    private void commitBanglish(String banglishText, int banglaLength) {
-        if (banglishText == null) return;
+    private void commitBanglish(
+            String banglishText,
+            int banglaLength
+    ) {
 
-        InputConnection ic = getCurrentInputConnection();
+        if (banglishText == null) {
+            return;
+        }
 
-        if (ic == null) return;
+        InputConnection ic =
+                getCurrentInputConnection();
 
-        String result = banglishText.trim();
+        if (ic == null) {
+            return;
+        }
 
-        if (result.isEmpty()) return;
+        String result =
+                banglishText.trim();
+
+        if (result.isEmpty()) {
+            return;
+        }
 
         if (banglaLength > 0) {
-            try {
-                boolean deleted = ic.deleteSurroundingText(banglaLength, 0);
 
-                if (!deleted) {
-                    Log.w(TAG, "deleteSurroundingText returned false");
-                }
+            try {
+
+                ic.deleteSurroundingText(
+                        banglaLength,
+                        0
+                );
+
             } catch (Exception e) {
-                Log.w(TAG, "deleteSurroundingText failed", e);
+
+                Log.e(
+                        TAG,
+                        "Delete before conversion failed",
+                        e
+                );
+
                 return;
             }
         }
 
         try {
-            ic.commitText(result + " ", 1);
+
+            /*
+             * Add one space after conversion.
+             * This makes the next word easier to type.
+             */
+            ic.commitText(
+                    result + " ",
+                    1
+            );
+
         } catch (Exception e) {
-            Log.e(TAG, "commitText failed", e);
+
+            Log.e(
+                    TAG,
+                    "commitText failed",
+                    e
+            );
+
             return;
         }
 
         if (suggestionText != null) {
-            suggestionText.setText("এখানে বাংলা দেখা যাবে...");
+            suggestionText.setText(
+                    "এখানে বাংলা দেখা যাবে..."
+            );
         }
     }
 
-    private void showToast(String message) {
-        try {
-            Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-        } catch (Exception e) {
-            Log.w(TAG, "Toast failed: " + e.getMessage());
+    /*
+     * REAL COPY
+     *
+     * The old code only displayed:
+     * "Copy করতে text select করুন"
+     *
+     * This version actually requests Android's COPY action.
+     */
+    private void copySelectedText() {
+
+        InputConnection ic =
+                getCurrentInputConnection();
+
+        if (ic == null) {
+            showToast(
+                    "Input connection পাওয়া যায়নি"
+            );
+            return;
         }
-    }
-
-    @Override
-    public void onKey(int primaryCode, int[] keyCodes) {
-        InputConnection ic = getCurrentInputConnection();
-
-        if (ic == null) return;
 
         try {
-            switch (primaryCode) {
-                case KEYCODE_MIC:
-                    startVoiceInput();
-                    break;
 
-                case KEYCODE_DELETE:
-                    ic.deleteSurroundingText(1, 0);
-                    break;
+            boolean copied =
+                    ic.performContextMenuAction(
+                            android.R.id.copy
+                    );
 
-                case KEYCODE_COPY:
-                    /*
-                     * Copy requires an actual selection in the target app.
-                     * We do not silently copy unrelated clipboard data.
-                     */
-                    showToast("Copy করতে text select করুন");
-                    break;
+            if (!copied) {
 
-                case KEYCODE_PASTE:
-                    pasteClipboard(ic);
-                    break;
-
-                case KEYCODE_SHIFT:
-                    // Shift state is handled by the keyboard XML/view.
-                    break;
-
-                case 10:
-                    ic.commitText("\n", 1);
-                    break;
-
-                default:
-                    /*
-                     * R.xml.qwerty provides normal printable key codes.
-                     * Ignore invalid negative codes rather than inserting
-                     * unexpected Unicode characters.
-                     */
-                    if (primaryCode >= 0 && primaryCode <= Character.MAX_VALUE) {
-                        char code = (char) primaryCode;
-                        ic.commitText(String.valueOf(code), 1);
-                    } else {
-                        Log.d(TAG, "Ignoring unsupported key code: " + primaryCode);
-                    }
-                    break;
+                showToast(
+                        "আগে text select করুন"
+                );
             }
+
         } catch (Exception e) {
-            Log.e(TAG, "Keyboard key handling failed: " + primaryCode, e);
+
+            Log.e(
+                    TAG,
+                    "Copy failed",
+                    e
+            );
+
+            showToast(
+                    "Copy করা যায়নি"
+            );
         }
     }
 
-    private void pasteClipboard(InputConnection ic) {
+    /*
+     * REAL PASTE
+     *
+     * First use Android's normal paste action.
+     * If that fails, paste directly from ClipboardManager.
+     */
+    private void pasteClipboard() {
+
+        InputConnection ic =
+                getCurrentInputConnection();
+
+        if (ic == null) {
+            showToast(
+                    "Input connection পাওয়া যায়নি"
+            );
+            return;
+        }
+
         try {
+
+            boolean pasted =
+                    ic.performContextMenuAction(
+                            android.R.id.paste
+                    );
+
+            if (pasted) {
+                return;
+            }
+
+        } catch (Exception e) {
+
+            Log.w(
+                    TAG,
+                    "Normal paste action failed",
+                    e
+            );
+        }
+
+        try {
+
             ClipboardManager clipboard =
-                    (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                    (ClipboardManager)
+                            getSystemService(
+                                    CLIPBOARD_SERVICE
+                            );
 
-            if (clipboard == null || !clipboard.hasPrimaryClip()) {
-                showToast("Clipboard খালি");
+            if (clipboard == null ||
+                    !clipboard.hasPrimaryClip()) {
+
+                showToast(
+                        "Clipboard খালি"
+                );
+
                 return;
             }
 
-            ClipData clip = clipboard.getPrimaryClip();
+            ClipData clip =
+                    clipboard.getPrimaryClip();
 
-            if (clip == null || clip.getItemCount() == 0) {
-                showToast("Clipboard খালি");
+            if (clip == null ||
+                    clip.getItemCount() == 0) {
+
+                showToast(
+                        "Clipboard খালি"
+                );
+
                 return;
             }
 
-            ClipData.Item item = clip.getItemAt(0);
-            CharSequence pasteText = item != null ? item.coerceToText(this) : null;
+            ClipData.Item item =
+                    clip.getItemAt(0);
 
-            if (pasteText != null && pasteText.length() > 0) {
-                // Paste is intentionally lossless: do not silently transliterate
-                // clipboard content. User can press Convert afterward.
-                ic.commitText(pasteText, 1);
+            CharSequence pasteText =
+                    item != null
+                            ? item.coerceToText(this)
+                            : null;
+
+            if (pasteText != null &&
+                    pasteText.length() > 0) {
+
+                ic.commitText(
+                        pasteText,
+                        1
+                );
+
+            } else {
+
+                showToast(
+                        "Clipboard খালি"
+                );
             }
+
         } catch (Exception e) {
-            Log.e(TAG, "Paste failed", e);
+
+            Log.e(
+                    TAG,
+                    "Clipboard paste failed",
+                    e
+            );
+
+            showToast(
+                    "Paste করা যায়নি"
+            );
+        }
+    }
+
+    /*
+     * Globe / Language Picker
+     *
+     * This opens Android's system keyboard picker so the user
+     * can switch between Banglish, English and Bangla IME.
+     */
+    private void showKeyboardPicker() {
+
+        try {
+
+            android.view.inputmethod.InputMethodManager imm =
+                    (android.view.inputmethod.InputMethodManager)
+                            getSystemService(
+                                    INPUT_METHOD_SERVICE
+                            );
+
+            if (imm != null) {
+                imm.showInputMethodPicker();
+            }
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Keyboard picker failed",
+                    e
+            );
+        }
+    }
+
+    private void showToast(
+            String message
+    ) {
+
+        try {
+
+            Toast.makeText(
+                    this,
+                    message,
+                    Toast.LENGTH_SHORT
+            ).show();
+
+        } catch (Exception e) {
+
+            Log.w(
+                    TAG,
+                    "Toast failed",
+                    e
+            );
         }
     }
 
     private void startVoiceInput() {
+
         if (suggestionText != null) {
-            suggestionText.setText("🎤 Listening... বলুন...");
+
+            suggestionText.setText(
+                    "🎤 Listening... বলুন..."
+            );
         }
 
-        showToast("Voice input shuru hocche...");
-
         try {
-            VoiceInputHelper.startListening(this, this);
+
+            VoiceInputHelper.startListening(
+                    this,
+                    this
+            );
+
         } catch (Exception e) {
-            Log.e(TAG, "Voice input failed", e);
+
+            Log.e(
+                    TAG,
+                    "Voice input failed",
+                    e
+            );
 
             if (suggestionText != null) {
-                suggestionText.setText("Voice input চালু করা যায়নি");
+
+                suggestionText.setText(
+                        "Voice input চালু করা যায়নি"
+                );
             }
+
+            showToast(
+                    "Voice input চালু করা যায়নি"
+            );
         }
     }
 
     @Override
-    public void onPress(int primaryCode) {
-        // No-op.
-    }
+    public void onKey(
+            int primaryCode,
+            int[] keyCodes
+    ) {
 
-    @Override
-    public void onRelease(int primaryCode) {
-        // No-op.
-    }
+        InputConnection ic =
+                getCurrentInputConnection();
 
-    @Override
-    public void onText(CharSequence text) {
-        if (text == null || text.length() == 0) return;
-
-        InputConnection ic = getCurrentInputConnection();
-        if (ic == null) return;
+        if (ic == null) {
+            return;
+        }
 
         try {
-            ic.commitText(text, 1);
+
+            switch (primaryCode) {
+
+                case KEYCODE_GLOBE:
+
+                    showKeyboardPicker();
+
+                    break;
+
+                case KEYCODE_MIC:
+
+                    startVoiceInput();
+
+                    break;
+
+                case KEYCODE_DELETE:
+
+                    ic.deleteSurroundingText(
+                            1,
+                            0
+                    );
+
+                    break;
+
+                case KEYCODE_COPY:
+
+                    copySelectedText();
+
+                    break;
+
+                case KEYCODE_PASTE:
+
+                    pasteClipboard();
+
+                    break;
+
+                case KEYCODE_SHIFT:
+
+                    /*
+                     * KeyboardView/XML handles the visual
+                     * shift state.
+                     */
+                    break;
+
+                case 10:
+
+                    ic.commitText(
+                            "\n",
+                            1
+                    );
+
+                    break;
+
+                default:
+
+                    /*
+                     * Normal QWERTY printable characters.
+                     */
+                    if (primaryCode >= 0 &&
+                            primaryCode <=
+                                    Character.MAX_VALUE) {
+
+                        char character =
+                                (char) primaryCode;
+
+                        if (qwertyKeyboard != null &&
+                                qwertyKeyboard.isShifted() &&
+                                Character.isLetter(
+                                        character
+                                )) {
+
+                            character =
+                                    Character.toUpperCase(
+                                            character
+                                    );
+
+                            qwertyKeyboard.setShifted(
+                                    false
+                            );
+
+                            if (keyboardView != null) {
+                                keyboardView
+                                        .invalidateAllKeys();
+                            }
+                        }
+
+                        ic.commitText(
+                                String.valueOf(
+                                        character
+                                ),
+                                1
+                        );
+                    }
+
+                    break;
+            }
+
         } catch (Exception e) {
-            Log.e(TAG, "onText commit failed", e);
+
+            Log.e(
+                    TAG,
+                    "Keyboard key handling failed: "
+                            + primaryCode,
+                    e
+            );
         }
+    }
+
+    @Override
+    public void onText(
+            CharSequence text
+    ) {
+
+        if (text == null ||
+                text.length() == 0) {
+            return;
+        }
+
+        InputConnection ic =
+                getCurrentInputConnection();
+
+        if (ic == null) {
+            return;
+        }
+
+        try {
+
+            ic.commitText(
+                    text,
+                    1
+            );
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "onText commit failed",
+                    e
+            );
+        }
+    }
+
+    @Override
+    public void onPress(
+            int primaryCode
+    ) {
+        // No-op.
+    }
+
+    @Override
+    public void onRelease(
+            int primaryCode
+    ) {
+        // No-op.
     }
 
     @Override
