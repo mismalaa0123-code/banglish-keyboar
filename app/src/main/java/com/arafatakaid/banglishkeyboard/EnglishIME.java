@@ -33,9 +33,7 @@ public class EnglishIME extends InputMethodService
         );
 
         keyboardView.setKeyboard(englishKeyboard);
-
         keyboardView.setOnKeyboardActionListener(this);
-
         keyboardView.setPreviewEnabled(false);
 
         return root;
@@ -60,7 +58,6 @@ public class EnglishIME extends InputMethodService
 
                     break;
 
-
                 case Keyboard.KEYCODE_SHIFT:
 
                     englishKeyboard.setShifted(
@@ -71,13 +68,11 @@ public class EnglishIME extends InputMethodService
 
                     break;
 
-
                 case Keyboard.KEYCODE_DONE:
 
                     ic.commitText("\n", 1);
 
                     break;
-
 
                 case KEYCODE_GLOBE:
 
@@ -85,14 +80,12 @@ public class EnglishIME extends InputMethodService
 
                     break;
 
-
                 default:
 
-                    if (primaryCode >= 0 &&
-                            primaryCode <= Character.MAX_VALUE) {
+                    if (primaryCode >= 0
+                            && primaryCode <= Character.MAX_VALUE) {
 
-                        char character =
-                                (char) primaryCode;
+                        char character = (char) primaryCode;
 
                         if (englishKeyboard.isShifted()
                                 && Character.isLetter(character)) {
@@ -106,11 +99,6 @@ public class EnglishIME extends InputMethodService
                                 1
                         );
 
-                        /*
-                         * Normal keyboard behaviour:
-                         * after typing one uppercase letter,
-                         * Shift turns off.
-                         */
                         if (englishKeyboard.isShifted()) {
 
                             englishKeyboard.setShifted(false);
@@ -126,7 +114,6 @@ public class EnglishIME extends InputMethodService
             // Prevent keyboard service from crashing.
         }
     }
-
 
     private void showKeyboardPicker() {
 
@@ -146,7 +133,6 @@ public class EnglishIME extends InputMethodService
         }
     }
 
-
     @Override
     public void onText(CharSequence text) {
 
@@ -162,33 +148,27 @@ public class EnglishIME extends InputMethodService
         }
     }
 
-
     @Override
     public void onPress(int primaryCode) {
     }
-
 
     @Override
     public void onRelease(int primaryCode) {
     }
 
-
     @Override
     public void swipeLeft() {
     }
-
 
     @Override
     public void swipeRight() {
     }
 
-
     @Override
     public void swipeDown() {
     }
 
-
     @Override
     public void swipeUp() {
     }
-        }
+}
