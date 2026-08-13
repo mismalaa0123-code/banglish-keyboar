@@ -11,6 +11,7 @@
     <application
         android:allowBackup="true"
         android:label="Arafatakaid Banglish Keyboard"
+        android:icon="@drawable/banglish_logo"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat">
 
@@ -49,7 +50,7 @@
 
 
         <!-- ================================================= -->
-        <!-- 2. New English Keyboard -->
+        <!-- 2. English Keyboard -->
         <!-- ================================================= -->
 
         <service
@@ -70,7 +71,7 @@
 
 
         <!-- ================================================= -->
-        <!-- 3. New Bangla Keyboard -->
+        <!-- 3. Bangla Keyboard -->
         <!-- ================================================= -->
 
         <service
