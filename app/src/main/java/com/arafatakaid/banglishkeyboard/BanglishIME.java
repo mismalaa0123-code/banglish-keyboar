@@ -2,6 +2,7 @@ package com.arafatakaid.banglishkeyboard;
 
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.Context;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
@@ -11,6 +12,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -24,15 +26,14 @@ public class BanglishIME extends InputMethodService
     private static final String TAG = "BanglishIME";
 
     /*
-     * IMPORTANT:
-     * -100 = Globe / language switch
-     * -101 = Voice
-     * -5   = Backspace
-     * -1   = Shift
+     * Key codes used by qwerty.xml
+     *
+     * -100 = Globe / language picker
+     * -101 = Microphone
      * -201 = Copy
      * -202 = Paste
-     *
-     * qwerty.xml must use the same codes.
+     * -5   = Backspace
+     * -1   = Shift
      */
     private static final int KEYCODE_GLOBE = -100;
     private static final int KEYCODE_MIC = -101;
@@ -47,10 +48,8 @@ public class BanglishIME extends InputMethodService
             Pattern.compile("[" + BANGLA_CHAR_CLASS + "]+");
 
     private static final Pattern LAST_BANGLA_RUN =
-            Pattern.compile(
-                    "[" + BANGLA_CHAR_CLASS + "]+(?:\\s+["
-                            + BANGLA_CHAR_CLASS + "]+)*"
-            );
+            Pattern.compile("[" + BANGLA_CHAR_CLASS + "]+(?:\\s+["
+                    + BANGLA_CHAR_CLASS + "]+)*");
 
     private KeyboardView keyboardView;
     private Keyboard qwertyKeyboard;
@@ -64,8 +63,7 @@ public class BanglishIME extends InputMethodService
         super.onCreate();
 
         try {
-            DictionaryHelper dh =
-                    DictionaryHelper.getInstance(this);
+            DictionaryHelper dh = DictionaryHelper.getInstance(this);
 
             BanglaToBanglishConverter.loadDictionaryFromAssets(
                     this,
@@ -99,54 +97,26 @@ public class BanglishIME extends InputMethodService
     public View onCreateInputView() {
 
         View root = LayoutInflater.from(this)
-                .inflate(
-                        R.layout.keyboard_view,
-                        null
-                );
+                .inflate(R.layout.keyboard_view, null);
 
         suggestionText =
-                root.findViewById(
-                        R.id.preview_text_view
-                );
+                root.findViewById(R.id.preview_text_view);
 
         Button convertButton =
-                root.findViewById(
-                        R.id.btn_convert
-                );
+                root.findViewById(R.id.btn_convert);
 
         Button micButton =
-                root.findViewById(
-                        R.id.btn_mic
-                );
-
-        Button copyButton =
-                root.findViewById(
-                        R.id.btn_copy
-                );
-
-        Button pasteButton =
-                root.findViewById(
-                        R.id.btn_paste
-                );
+                root.findViewById(R.id.btn_mic);
 
         keyboardView =
-                root.findViewById(
-                        R.id.keyboard_view
-                );
+                root.findViewById(R.id.keyboard_view);
 
         qwertyKeyboard =
-                new Keyboard(
-                        this,
-                        R.xml.qwerty
-                );
+                new Keyboard(this, R.xml.qwerty);
 
-        keyboardView.setKeyboard(
-                qwertyKeyboard
-        );
+        keyboardView.setKeyboard(qwertyKeyboard);
 
-        keyboardView.setOnKeyboardActionListener(
-                this
-        );
+        keyboardView.setOnKeyboardActionListener(this);
 
         keyboardView.setPreviewEnabled(false);
 
@@ -162,48 +132,22 @@ public class BanglishIME extends InputMethodService
             );
         }
 
-        /*
-         * Copy button:
-         * Uses Android's real text-selection copy action.
-         * If nothing is selected, Android simply does nothing.
-         */
-        if (copyButton != null) {
-            copyButton.setOnClickListener(
-                    v -> copySelectedText()
-            );
-        }
-
-        /*
-         * Paste button:
-         * First tries InputConnection's paste action.
-         * Falls back to the clipboard directly if necessary.
-         */
-        if (pasteButton != null) {
-            pasteButton.setOnClickListener(
-                    v -> pasteClipboard()
-            );
-        }
-
         if (suggestionText != null) {
-            suggestionText.setOnClickListener(
-                    v -> {
 
-                        String text =
-                                suggestionText.getText() != null
-                                        ? suggestionText
-                                        .getText()
-                                        .toString()
-                                        .trim()
-                                        : "";
+            suggestionText.setOnClickListener(v -> {
 
-                        if (isUsableVoiceOrPreviewText(text)) {
-                            processBanglaText(
-                                    text,
-                                    0
-                            );
-                        }
-                    }
-            );
+                String text =
+                        suggestionText.getText() != null
+                                ? suggestionText
+                                .getText()
+                                .toString()
+                                .trim()
+                                : "";
+
+                if (isUsableVoiceOrPreviewText(text)) {
+                    processBanglaText(text, 0);
+                }
+            });
         }
 
         return root;
@@ -213,8 +157,7 @@ public class BanglishIME extends InputMethodService
             String text
     ) {
 
-        if (text == null ||
-                text.trim().isEmpty()) {
+        if (text == null || text.trim().isEmpty()) {
             return false;
         }
 
@@ -222,8 +165,7 @@ public class BanglishIME extends InputMethodService
 
         return !t.contains("Listening")
                 && !t.contains("এখানে বাংলা")
-                && !t.contains("Voice input")
-                && !t.contains("Voice input চালু করা যায়নি");
+                && !t.contains("Voice input");
     }
 
     private static String extractLastBanglaToken(
@@ -273,18 +215,17 @@ public class BanglishIME extends InputMethodService
             String run
     ) {
 
-        if (text == null ||
-                run == null ||
-                run.isEmpty()) {
+        if (text == null
+                || run == null
+                || run.isEmpty()) {
             return 0;
         }
 
         int end = text.length();
 
-        while (end > 0 &&
-                Character.isWhitespace(
-                        text.charAt(end - 1)
-                )) {
+        while (end > 0
+                && Character.isWhitespace(
+                text.charAt(end - 1))) {
             end--;
         }
 
@@ -292,8 +233,7 @@ public class BanglishIME extends InputMethodService
 
         while (start > 0) {
 
-            char c =
-                    text.charAt(start - 1);
+            char c = text.charAt(start - 1);
 
             if (isBanglaChar(c)) {
 
@@ -303,24 +243,21 @@ public class BanglishIME extends InputMethodService
 
                 int j = start - 1;
 
-                while (j >= 0 &&
-                        Character.isWhitespace(
-                                text.charAt(j)
-                        )) {
+                while (j >= 0
+                        && Character.isWhitespace(
+                        text.charAt(j))) {
                     j--;
                 }
 
-                if (j >= 0 &&
-                        isBanglaChar(
-                                text.charAt(j)
-                        )) {
+                if (j >= 0
+                        && isBanglaChar(
+                        text.charAt(j))) {
 
                     start = j + 1;
 
-                    while (start > 0 &&
-                            isBanglaChar(
-                                    text.charAt(start - 1)
-                            )) {
+                    while (start > 0
+                            && isBanglaChar(
+                            text.charAt(start - 1))) {
                         start--;
                     }
 
@@ -333,18 +270,13 @@ public class BanglishIME extends InputMethodService
             }
         }
 
-        return Math.max(
-                0,
-                end - start
-        );
+        return Math.max(0, end - start);
     }
 
-    private static boolean isBanglaChar(
-            char c
-    ) {
+    private static boolean isBanglaChar(char c) {
 
-        return c >= '\u0980' &&
-                c <= '\u09FF';
+        return c >= '\u0980'
+                && c <= '\u09FF';
     }
 
     private void convertCurrentText() {
@@ -365,8 +297,8 @@ public class BanglishIME extends InputMethodService
                         0
                 );
 
-        if (before != null &&
-                before.length() > 0) {
+        if (before != null
+                && before.length() > 0) {
 
             String fullBefore =
                     before.toString();
@@ -449,36 +381,32 @@ public class BanglishIME extends InputMethodService
             String recognizedBangla
     ) {
 
-        mainHandler.post(
-                () -> {
+        mainHandler.post(() -> {
 
-                    if (suggestionText != null &&
-                            recognizedBangla != null) {
+            if (suggestionText != null
+                    && recognizedBangla != null) {
 
-                        suggestionText.setText(
-                                recognizedBangla
-                        );
-                    }
-                }
-        );
+                suggestionText.setText(
+                        recognizedBangla
+                );
+            }
+        });
     }
 
     public void handleVoicePartialResult(
             String partialText
     ) {
 
-        mainHandler.post(
-                () -> {
+        mainHandler.post(() -> {
 
-                    if (suggestionText != null &&
-                            partialText != null) {
+            if (suggestionText != null
+                    && partialText != null) {
 
-                        suggestionText.setText(
-                                partialText
-                        );
-                    }
-                }
-        );
+                suggestionText.setText(
+                        partialText
+                );
+            }
+        });
     }
 
     private void processBanglaText(
@@ -513,8 +441,8 @@ public class BanglishIME extends InputMethodService
             );
         }
 
-        if (banglishResult == null ||
-                banglishResult.trim().isEmpty()) {
+        if (banglishResult == null
+                || banglishResult.trim().isEmpty()) {
 
             try {
 
@@ -531,16 +459,14 @@ public class BanglishIME extends InputMethodService
                         e
                 );
 
-                banglishResult =
-                        cleanText;
+                banglishResult = cleanText;
             }
         }
 
-        if (banglishResult == null ||
-                banglishResult.trim().isEmpty()) {
+        if (banglishResult == null
+                || banglishResult.trim().isEmpty()) {
 
-            banglishResult =
-                    cleanText;
+            banglishResult = cleanText;
         }
 
         commitBanglish(
@@ -576,16 +502,24 @@ public class BanglishIME extends InputMethodService
 
             try {
 
-                ic.deleteSurroundingText(
-                        banglaLength,
-                        0
-                );
+                boolean deleted =
+                        ic.deleteSurroundingText(
+                                banglaLength,
+                                0
+                        );
+
+                if (!deleted) {
+                    Log.w(
+                            TAG,
+                            "deleteSurroundingText returned false"
+                    );
+                }
 
             } catch (Exception e) {
 
-                Log.e(
+                Log.w(
                         TAG,
-                        "Delete before conversion failed",
+                        "deleteSurroundingText failed",
                         e
                 );
 
@@ -595,10 +529,6 @@ public class BanglishIME extends InputMethodService
 
         try {
 
-            /*
-             * Add one space after conversion.
-             * This makes the next word easier to type.
-             */
             ic.commitText(
                     result + " ",
                     1
@@ -616,45 +546,266 @@ public class BanglishIME extends InputMethodService
         }
 
         if (suggestionText != null) {
+
             suggestionText.setText(
                     "এখানে বাংলা দেখা যাবে..."
             );
         }
     }
 
-    /*
-     * REAL COPY
-     *
-     * The old code only displayed:
-     * "Copy করতে text select করুন"
-     *
-     * This version actually requests Android's COPY action.
-     */
-    private void copySelectedText() {
+    private void showToast(String message) {
+
+        try {
+
+            Toast.makeText(
+                    this,
+                    message,
+                    Toast.LENGTH_SHORT
+            ).show();
+
+        } catch (Exception e) {
+
+            Log.w(
+                    TAG,
+                    "Toast failed: "
+                            + e.getMessage()
+            );
+        }
+    }
+
+    @Override
+    public void onKey(
+            int primaryCode,
+            int[] keyCodes
+    ) {
 
         InputConnection ic =
                 getCurrentInputConnection();
 
         if (ic == null) {
-            showToast(
-                    "Input connection পাওয়া যায়নি"
-            );
             return;
         }
 
         try {
 
-            boolean copied =
-                    ic.performContextMenuAction(
-                            android.R.id.copy
+            switch (primaryCode) {
+
+                /*
+                 * GLOBAL LANGUAGE BUTTON
+                 *
+                 * Opens Android's keyboard/language picker.
+                 * This is separate from the microphone button.
+                 */
+                case KEYCODE_GLOBE:
+
+                    showKeyboardPicker();
+
+                    break;
+
+                /*
+                 * MICROPHONE BUTTON
+                 */
+                case KEYCODE_MIC:
+
+                    startVoiceInput();
+
+                    break;
+
+                /*
+                 * BACKSPACE
+                 */
+                case KEYCODE_DELETE:
+
+                    ic.deleteSurroundingText(
+                            1,
+                            0
                     );
 
-            if (!copied) {
+                    break;
+
+                /*
+                 * COPY
+                 *
+                 * Copies the currently selected text from the
+                 * target application.
+                 */
+                case KEYCODE_COPY:
+
+                    copySelectedText(ic);
+
+                    break;
+
+                /*
+                 * PASTE
+                 */
+                case KEYCODE_PASTE:
+
+                    pasteClipboard(ic);
+
+                    break;
+
+                /*
+                 * SHIFT
+                 *
+                 * The actual visual shift state is controlled by
+                 * KeyboardView/Keyboard XML. We do not insert
+                 * anything here.
+                 */
+                case KEYCODE_SHIFT:
+
+                    if (qwertyKeyboard != null) {
+
+                        qwertyKeyboard.setShifted(
+                                !qwertyKeyboard.isShifted()
+                        );
+
+                        if (keyboardView != null) {
+                            keyboardView.invalidateAllKeys();
+                        }
+                    }
+
+                    break;
+
+                /*
+                 * ENTER
+                 */
+                case 10:
+
+                    ic.commitText(
+                            "\n",
+                            1
+                    );
+
+                    break;
+
+                default:
+
+                    /*
+                     * Normal printable characters.
+                     */
+                    if (primaryCode >= 0
+                            && primaryCode
+                            <= Character.MAX_VALUE) {
+
+                        char code =
+                                (char) primaryCode;
+
+                        /*
+                         * Uppercase letters when shift is active.
+                         */
+                        if (qwertyKeyboard != null
+                                && qwertyKeyboard.isShifted()
+                                && Character.isLetter(code)) {
+
+                            code =
+                                    Character.toUpperCase(code);
+
+                            /*
+                             * One-shot shift.
+                             */
+                            qwertyKeyboard.setShifted(false);
+
+                            if (keyboardView != null) {
+                                keyboardView
+                                        .invalidateAllKeys();
+                            }
+                        }
+
+                        ic.commitText(
+                                String.valueOf(code),
+                                1
+                        );
+                    }
+
+                    break;
+            }
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Keyboard key handling failed: "
+                            + primaryCode,
+                    e
+            );
+        }
+    }
+
+    /*
+     * Android global language/keyboard picker.
+     */
+    private void showKeyboardPicker() {
+
+        try {
+
+            InputMethodManager imm =
+                    (InputMethodManager)
+                            getSystemService(
+                                    Context.INPUT_METHOD_SERVICE
+                            );
+
+            if (imm != null) {
+                imm.showInputMethodPicker();
+            }
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Keyboard picker failed",
+                    e
+            );
+
+            showToast(
+                    "Language picker চালু করা যায়নি"
+            );
+        }
+    }
+
+    /*
+     * Copy selected text from the currently focused application.
+     */
+    private void copySelectedText(
+            InputConnection ic
+    ) {
+
+        try {
+
+            CharSequence selected =
+                    ic.getSelectedText(0);
+
+            if (selected == null
+                    || selected.length() == 0) {
 
                 showToast(
                         "আগে text select করুন"
                 );
+
+                return;
             }
+
+            ClipboardManager clipboard =
+                    (ClipboardManager)
+                            getSystemService(
+                                    CLIPBOARD_SERVICE
+                            );
+
+            if (clipboard == null) {
+                showToast(
+                        "Clipboard পাওয়া যায়নি"
+                );
+                return;
+            }
+
+            ClipData clip =
+                    ClipData.newPlainText(
+                            "Banglish Keyboard",
+                            selected
+                    );
+
+            clipboard.setPrimaryClip(clip);
+
+            showToast("Copied");
 
         } catch (Exception e) {
 
@@ -671,42 +822,11 @@ public class BanglishIME extends InputMethodService
     }
 
     /*
-     * REAL PASTE
-     *
-     * First use Android's normal paste action.
-     * If that fails, paste directly from ClipboardManager.
+     * Paste clipboard text into the current input field.
      */
-    private void pasteClipboard() {
-
-        InputConnection ic =
-                getCurrentInputConnection();
-
-        if (ic == null) {
-            showToast(
-                    "Input connection পাওয়া যায়নি"
-            );
-            return;
-        }
-
-        try {
-
-            boolean pasted =
-                    ic.performContextMenuAction(
-                            android.R.id.paste
-                    );
-
-            if (pasted) {
-                return;
-            }
-
-        } catch (Exception e) {
-
-            Log.w(
-                    TAG,
-                    "Normal paste action failed",
-                    e
-            );
-        }
+    private void pasteClipboard(
+            InputConnection ic
+    ) {
 
         try {
 
@@ -716,8 +836,8 @@ public class BanglishIME extends InputMethodService
                                     CLIPBOARD_SERVICE
                             );
 
-            if (clipboard == null ||
-                    !clipboard.hasPrimaryClip()) {
+            if (clipboard == null
+                    || !clipboard.hasPrimaryClip()) {
 
                 showToast(
                         "Clipboard খালি"
@@ -729,8 +849,8 @@ public class BanglishIME extends InputMethodService
             ClipData clip =
                     clipboard.getPrimaryClip();
 
-            if (clip == null ||
-                    clip.getItemCount() == 0) {
+            if (clip == null
+                    || clip.getItemCount() == 0) {
 
                 showToast(
                         "Clipboard খালি"
@@ -747,83 +867,25 @@ public class BanglishIME extends InputMethodService
                             ? item.coerceToText(this)
                             : null;
 
-            if (pasteText != null &&
-                    pasteText.length() > 0) {
+            if (pasteText != null
+                    && pasteText.length() > 0) {
 
                 ic.commitText(
                         pasteText,
                         1
                 );
-
-            } else {
-
-                showToast(
-                        "Clipboard খালি"
-                );
             }
 
         } catch (Exception e) {
 
             Log.e(
                     TAG,
-                    "Clipboard paste failed",
+                    "Paste failed",
                     e
             );
 
             showToast(
                     "Paste করা যায়নি"
-            );
-        }
-    }
-
-    /*
-     * Globe / Language Picker
-     *
-     * This opens Android's system keyboard picker so the user
-     * can switch between Banglish, English and Bangla IME.
-     */
-    private void showKeyboardPicker() {
-
-        try {
-
-            android.view.inputmethod.InputMethodManager imm =
-                    (android.view.inputmethod.InputMethodManager)
-                            getSystemService(
-                                    INPUT_METHOD_SERVICE
-                            );
-
-            if (imm != null) {
-                imm.showInputMethodPicker();
-            }
-
-        } catch (Exception e) {
-
-            Log.e(
-                    TAG,
-                    "Keyboard picker failed",
-                    e
-            );
-        }
-    }
-
-    private void showToast(
-            String message
-    ) {
-
-        try {
-
-            Toast.makeText(
-                    this,
-                    message,
-                    Toast.LENGTH_SHORT
-            ).show();
-
-        } catch (Exception e) {
-
-            Log.w(
-                    TAG,
-                    "Toast failed",
-                    e
             );
         }
     }
@@ -836,6 +898,10 @@ public class BanglishIME extends InputMethodService
                     "🎤 Listening... বলুন..."
             );
         }
+
+        showToast(
+                "Voice input shuru hocche..."
+        );
 
         try {
 
@@ -858,142 +924,24 @@ public class BanglishIME extends InputMethodService
                         "Voice input চালু করা যায়নি"
                 );
             }
-
-            showToast(
-                    "Voice input চালু করা যায়নি"
-            );
         }
     }
 
     @Override
-    public void onKey(
-            int primaryCode,
-            int[] keyCodes
-    ) {
-
-        InputConnection ic =
-                getCurrentInputConnection();
-
-        if (ic == null) {
-            return;
-        }
-
-        try {
-
-            switch (primaryCode) {
-
-                case KEYCODE_GLOBE:
-
-                    showKeyboardPicker();
-
-                    break;
-
-                case KEYCODE_MIC:
-
-                    startVoiceInput();
-
-                    break;
-
-                case KEYCODE_DELETE:
-
-                    ic.deleteSurroundingText(
-                            1,
-                            0
-                    );
-
-                    break;
-
-                case KEYCODE_COPY:
-
-                    copySelectedText();
-
-                    break;
-
-                case KEYCODE_PASTE:
-
-                    pasteClipboard();
-
-                    break;
-
-                case KEYCODE_SHIFT:
-
-                    /*
-                     * KeyboardView/XML handles the visual
-                     * shift state.
-                     */
-                    break;
-
-                case 10:
-
-                    ic.commitText(
-                            "\n",
-                            1
-                    );
-
-                    break;
-
-                default:
-
-                    /*
-                     * Normal QWERTY printable characters.
-                     */
-                    if (primaryCode >= 0 &&
-                            primaryCode <=
-                                    Character.MAX_VALUE) {
-
-                        char character =
-                                (char) primaryCode;
-
-                        if (qwertyKeyboard != null &&
-                                qwertyKeyboard.isShifted() &&
-                                Character.isLetter(
-                                        character
-                                )) {
-
-                            character =
-                                    Character.toUpperCase(
-                                            character
-                                    );
-
-                            qwertyKeyboard.setShifted(
-                                    false
-                            );
-
-                            if (keyboardView != null) {
-                                keyboardView
-                                        .invalidateAllKeys();
-                            }
-                        }
-
-                        ic.commitText(
-                                String.valueOf(
-                                        character
-                                ),
-                                1
-                        );
-                    }
-
-                    break;
-            }
-
-        } catch (Exception e) {
-
-            Log.e(
-                    TAG,
-                    "Keyboard key handling failed: "
-                            + primaryCode,
-                    e
-            );
-        }
+    public void onPress(int primaryCode) {
+        // No-op.
     }
 
     @Override
-    public void onText(
-            CharSequence text
-    ) {
+    public void onRelease(int primaryCode) {
+        // No-op.
+    }
 
-        if (text == null ||
-                text.length() == 0) {
+    @Override
+    public void onText(CharSequence text) {
+
+        if (text == null
+                || text.length() == 0) {
             return;
         }
 
@@ -1019,20 +967,6 @@ public class BanglishIME extends InputMethodService
                     e
             );
         }
-    }
-
-    @Override
-    public void onPress(
-            int primaryCode
-    ) {
-        // No-op.
-    }
-
-    @Override
-    public void onRelease(
-            int primaryCode
-    ) {
-        // No-op.
     }
 
     @Override
