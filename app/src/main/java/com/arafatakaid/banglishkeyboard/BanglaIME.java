@@ -7,25 +7,29 @@ import android.content.pm.PackageManager;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
+import android.os.Build;
+import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.view.View;
+import android.widget.Button;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 
 import java.util.ArrayList;
-import java.util.Locale;
 
 public class BanglaIME extends InputMethodService
         implements KeyboardView.OnKeyboardActionListener {
 
     private static final int KEYCODE_GLOBE = -100;
-    private static final int KEYCODE_VOICE = -101;
+    private static final int REQUEST_RECORD_AUDIO = 2001;
 
     private KeyboardView keyboardView;
     private Keyboard banglaKeyboard;
     private SpeechRecognizer speechRecognizer;
+
+    private Button voiceButton;
 
     @Override
     public View onCreateInputView() {
@@ -33,17 +37,41 @@ public class BanglaIME extends InputMethodService
         View root = getLayoutInflater()
                 .inflate(R.layout.bangla_keyboard_view, null);
 
+        // বাংলা KeyboardView
         keyboardView =
                 root.findViewById(R.id.bangla_keyboard_view);
 
+        // উপরের Voice Button
+        voiceButton =
+                root.findViewById(R.id.bangla_voice_button);
+
+        // বাংলা Keyboard
         banglaKeyboard = new Keyboard(
                 this,
                 R.xml.bangla_keyboard
         );
 
         keyboardView.setKeyboard(banglaKeyboard);
+
         keyboardView.setOnKeyboardActionListener(this);
+
         keyboardView.setPreviewEnabled(false);
+
+        // Voice Button click
+        if (voiceButton != null) {
+
+            voiceButton.setOnClickListener(
+                    new View.OnClickListener() {
+
+                        @Override
+                        public void onClick(View v) {
+
+                            startVoiceInput();
+
+                        }
+                    }
+            );
+        }
 
         return root;
     }
@@ -51,7 +79,8 @@ public class BanglaIME extends InputMethodService
     @Override
     public void onKey(int primaryCode, int[] keyCodes) {
 
-        InputConnection ic = getCurrentInputConnection();
+        InputConnection ic =
+                getCurrentInputConnection();
 
         if (ic == null) {
             return;
@@ -87,12 +116,6 @@ public class BanglaIME extends InputMethodService
 
                 break;
 
-            case KEYCODE_VOICE:
-
-                startVoiceInput();
-
-                break;
-
             default:
 
                 if (primaryCode != 0) {
@@ -107,18 +130,28 @@ public class BanglaIME extends InputMethodService
         }
     }
 
+    /**
+     * Voice Input শুরু
+     */
     private void startVoiceInput() {
 
+        // Speech recognition available কিনা
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+
             return;
         }
 
-        if (android.os.Build.VERSION.SDK_INT >=
-                android.os.Build.VERSION_CODES.M) {
+        // Android 6.0+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 
             if (checkSelfPermission(
                     Manifest.permission.RECORD_AUDIO
             ) != PackageManager.PERMISSION_GRANTED) {
+
+                // IME থেকে permission dialog সব device-এ
+                // সরাসরি দেখানো সম্ভব নাও হতে পারে।
+                // তাই permission না থাকলে Settings/App-এর
+                // permission থেকে দিতে হবে।
 
                 return;
             }
@@ -134,34 +167,42 @@ public class BanglaIME extends InputMethodService
 
                     @Override
                     public void onReadyForSpeech(
-                            android.os.Bundle params) {
+                            Bundle params) {
+
                     }
 
                     @Override
                     public void onBeginningOfSpeech() {
+
                     }
 
                     @Override
-                    public void onRmsChanged(float rmsdB) {
+                    public void onRmsChanged(
+                            float rmsdB) {
+
                     }
 
                     @Override
                     public void onBufferReceived(
                             byte[] buffer) {
+
                     }
 
                     @Override
                     public void onEndOfSpeech() {
+
                     }
 
                     @Override
-                    public void onError(int error) {
+                    public void onError(
+                            int error) {
+
                         stopVoiceInput();
                     }
 
                     @Override
                     public void onResults(
-                            android.os.Bundle results) {
+                            Bundle results) {
 
                         ArrayList<String> matches =
                                 results.getStringArrayList(
@@ -188,22 +229,26 @@ public class BanglaIME extends InputMethodService
 
                     @Override
                     public void onPartialResults(
-                            android.os.Bundle partialResults) {
+                            Bundle partialResults) {
+
                     }
 
                     @Override
                     public void onEvent(
                             int eventType,
-                            android.os.Bundle params) {
+                            Bundle params) {
+
                     }
                 }
         );
 
+        // Speech recognition intent
         Intent intent =
                 new Intent(
                         RecognizerIntent.ACTION_RECOGNIZE_SPEECH
                 );
 
+        // বাংলা ভাষা
         intent.putExtra(
                 RecognizerIntent.EXTRA_LANGUAGE,
                 "bn-BD"
@@ -215,28 +260,54 @@ public class BanglaIME extends InputMethodService
         );
 
         intent.putExtra(
-                RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE,
-                "bn-BD"
-        );
-
-        intent.putExtra(
                 RecognizerIntent.EXTRA_MAX_RESULTS,
                 3
+        );
+
+        // Partial result চাই
+        intent.putExtra(
+                RecognizerIntent.EXTRA_PARTIAL_RESULTS,
+                false
         );
 
         speechRecognizer.startListening(intent);
     }
 
+    /**
+     * Voice Input বন্ধ
+     */
     private void stopVoiceInput() {
 
         if (speechRecognizer != null) {
 
-            speechRecognizer.stopListening();
-            speechRecognizer.destroy();
+            try {
+
+                speechRecognizer.stopListening();
+
+            } catch (Exception ignored) {
+            }
+
+            try {
+
+                speechRecognizer.cancel();
+
+            } catch (Exception ignored) {
+            }
+
+            try {
+
+                speechRecognizer.destroy();
+
+            } catch (Exception ignored) {
+            }
+
             speechRecognizer = null;
         }
     }
 
+    /**
+     * Keyboard Picker
+     */
     private void showKeyboardPicker() {
 
         InputMethodManager imm =
@@ -246,10 +317,14 @@ public class BanglaIME extends InputMethodService
                         );
 
         if (imm != null) {
+
             imm.showInputMethodPicker();
         }
     }
 
+    /**
+     * Keyboard text
+     */
     @Override
     public void onText(CharSequence text) {
 
@@ -264,6 +339,9 @@ public class BanglaIME extends InputMethodService
         }
     }
 
+    /**
+     * Service destroy
+     */
     @Override
     public void onDestroy() {
 
@@ -289,10 +367,12 @@ public class BanglaIME extends InputMethodService
     }
 
     @Override
-    public void onPress(int primaryCode) {
+    public void onPress(
+            int primaryCode) {
     }
 
     @Override
-    public void onRelease(int primaryCode) {
+    public void onRelease(
+            int primaryCode) {
     }
-}
+        }
