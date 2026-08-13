@@ -1,19 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<android.inputmethodservice.KeyboardView
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-
-    android:id="@+id/bangla_keyboard_view"
 
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
 
-    android:background="#FFFFFF"
+    android:orientation="vertical"
+    android:background="#FFFFFF">
 
-    android:keyTextColor="#000000"
-    android:keyTextSize="20sp"
+    <!-- Voice Input Button - Keyboard-এর একদম উপরে -->
 
-    android:focusable="true"
-    android:focusableInTouchMode="true"
+    <Button
+        android:id="@+id/bangla_voice_button"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
 
-    android:padding="0dp" />
+        android:text="🎤  ভয়েস দিয়ে লিখুন"
+        android:textSize="14sp"
+        android:textColor="#000000"
+
+        android:background="#EEEEEE"
+
+        android:padding="0dp"
+        android:minHeight="0dp"
+        android:minWidth="0dp" />
+
+    <!-- বাংলা Keyboard -->
+
+    <android.inputmethodservice.KeyboardView
+        android:id="@+id/bangla_keyboard_view"
+
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:background="#FFFFFF"
+
+        android:keyTextColor="#000000"
+        android:keyTextSize="20sp"
+
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+
+        android:padding="0dp" />
+
+</LinearLayout>
