@@ -2,10 +2,10 @@
 
 <Keyboard
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:keyWidth="10%p"
-    android:keyHeight="42dp"
+    android:keyWidth="9.09%p"
+    android:keyHeight="36dp"
     android:horizontalGap="0dp"
-    android:verticalGap="2dp">
+    android:verticalGap="1dp">
 
     <!-- বাংলা স্বরবর্ণ -->
 
@@ -101,74 +101,40 @@
 
     </Row>
 
-    <!-- বাংলা চিহ্ন ও হসন্ত -->
+    <!-- বাংলা চিহ্ন -->
 
-    <Row>
+    <Row android:rowEdgeFlags="bottom">
 
         <Key android:codes="2433" android:keyLabel="ঁ" />
         <Key android:codes="2434" android:keyLabel="ং" />
         <Key android:codes="2435" android:keyLabel="ঃ" />
         <Key android:codes="2492" android:keyLabel="্" />
-        <Key android:keyOutputText="র্" android:keyLabel="রেফ" />
-        <Key android:keyOutputText="্র" android:keyLabel="র-ফলা" />
-        <Key android:keyOutputText="্য" android:keyLabel="য-ফলা" />
-        <Key android:keyOutputText="র‍্য" android:keyLabel="র‍্য" />
-        <Key android:codes="2404" android:keyLabel="।" />
-        <Key android:codes="63" android:keyLabel="?" />
-
-    </Row>
-
-    <!-- প্রয়োজনীয় যুক্তাক্ষর -->
-
-    <Row>
-
-        <Key android:keyOutputText="ক্ষ" android:keyLabel="ক্ষ" />
-        <Key android:keyOutputText="জ্ঞ" android:keyLabel="জ্ঞ" />
-        <Key android:keyOutputText="শ্র" android:keyLabel="শ্র" />
-        <Key android:keyOutputText="ক্র" android:keyLabel="ক্র" />
-        <Key android:keyOutputText="গ্র" android:keyLabel="গ্র" />
-        <Key android:keyOutputText="প্র" android:keyLabel="প্র" />
-        <Key android:keyOutputText="ত্র" android:keyLabel="ত্র" />
-        <Key android:keyOutputText="দ্র" android:keyLabel="দ্র" />
-        <Key android:keyOutputText="ব্র" android:keyLabel="ব্র" />
-        <Key android:keyOutputText="ম্র" android:keyLabel="ম্র" />
-
-    </Row>
-
-    <!-- নিচের Control Row -->
-
-    <Row android:rowEdgeFlags="bottom">
 
         <Key
             android:codes="-100"
             android:keyLabel="🌐"
-            android:keyWidth="10%p" />
+            android:keyWidth="9.09%p" />
 
         <Key
             android:codes="44"
             android:keyLabel=","
-            android:keyWidth="10%p" />
+            android:keyWidth="9.09%p" />
 
         <Key
             android:codes="32"
             android:keyLabel="স্পেস"
-            android:keyWidth="50%p"
+            android:keyWidth="27.27%p"
             android:isRepeatable="true" />
-
-        <Key
-            android:codes="2404"
-            android:keyLabel="।"
-            android:keyWidth="10%p" />
 
         <Key
             android:codes="-5"
             android:keyLabel="⌫"
-            android:keyWidth="10%p" />
+            android:keyWidth="9.09%p" />
 
         <Key
             android:codes="10"
             android:keyLabel="↵"
-            android:keyWidth="10%p" />
+            android:keyWidth="9.09%p" />
 
     </Row>
 
