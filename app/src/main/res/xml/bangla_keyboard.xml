@@ -3,9 +3,9 @@
 <Keyboard
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:keyWidth="10%p"
-    android:keyHeight="55dp"
+    android:keyHeight="42dp"
     android:horizontalGap="0dp"
-    android:verticalGap="4dp">
+    android:verticalGap="2dp">
 
     <!-- বাংলা স্বরবর্ণ -->
 
