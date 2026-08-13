@@ -7,10 +7,8 @@ import android.content.pm.PackageManager;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -31,9 +29,15 @@ public class BanglaIME extends InputMethodService
     private Keyboard banglaKeyboard;
 
     private SpeechRecognizer speechRecognizer;
+
     private Button voiceButton;
 
     private boolean isListening = false;
+
+
+    // =========================================================
+    // CREATE KEYBOARD VIEW
+    // =========================================================
 
     @Override
     public View onCreateInputView() {
@@ -41,29 +45,57 @@ public class BanglaIME extends InputMethodService
         View root = getLayoutInflater()
                 .inflate(R.layout.bangla_keyboard_view, null);
 
-        // বাংলা KeyboardView
-        keyboardView = root.findViewById(
-                R.id.bangla_keyboard_view
-        );
 
+        // -----------------------------------------------------
+        // বাংলা Keyboard View
+        // -----------------------------------------------------
+
+        keyboardView =
+                root.findViewById(
+                        R.id.bangla_keyboard_view
+                );
+
+
+        // -----------------------------------------------------
         // Voice Button
-        voiceButton = root.findViewById(
-                R.id.bangla_voice_button
-        );
+        // -----------------------------------------------------
 
+        voiceButton =
+                root.findViewById(
+                        R.id.bangla_voice_button
+                );
+
+
+        // -----------------------------------------------------
         // বাংলা Keyboard
-        banglaKeyboard = new Keyboard(
-                this,
-                R.xml.bangla_keyboard
+        // -----------------------------------------------------
+
+        banglaKeyboard =
+                new Keyboard(
+                        this,
+                        R.xml.bangla_keyboard
+                );
+
+
+        keyboardView.setKeyboard(
+                banglaKeyboard
         );
 
-        keyboardView.setKeyboard(banglaKeyboard);
 
-        keyboardView.setOnKeyboardActionListener(this);
+        keyboardView.setOnKeyboardActionListener(
+                this
+        );
 
-        keyboardView.setPreviewEnabled(false);
 
-        // Voice Button
+        keyboardView.setPreviewEnabled(
+                false
+        );
+
+
+        // -----------------------------------------------------
+        // Voice Button Click
+        // -----------------------------------------------------
+
         if (voiceButton != null) {
 
             voiceButton.setOnClickListener(
@@ -72,40 +104,64 @@ public class BanglaIME extends InputMethodService
                         @Override
                         public void onClick(View v) {
 
-                            startVoiceInput();
+                            if (isListening) {
 
+                                stopVoiceInput();
+
+                            } else {
+
+                                startVoiceInput();
+                            }
                         }
                     }
             );
         }
 
+
         return root;
     }
 
+
     // =========================================================
-    // Keyboard Key
+    // KEYBOARD KEY
     // =========================================================
 
     @Override
-    public void onKey(int primaryCode, int[] keyCodes) {
+    public void onKey(
+            int primaryCode,
+            int[] keyCodes) {
+
 
         InputConnection ic =
                 getCurrentInputConnection();
+
 
         if (ic == null) {
             return;
         }
 
+
         switch (primaryCode) {
 
-            // Delete
+
+            // -------------------------------------------------
+            // DELETE
+            // -------------------------------------------------
+
             case Keyboard.KEYCODE_DELETE:
 
-                ic.deleteSurroundingText(1, 0);
+                ic.deleteSurroundingText(
+                        1,
+                        0
+                );
 
                 break;
 
-            // Shift
+
+            // -------------------------------------------------
+            // SHIFT
+            // -------------------------------------------------
+
             case Keyboard.KEYCODE_SHIFT:
 
                 if (banglaKeyboard != null) {
@@ -115,57 +171,76 @@ public class BanglaIME extends InputMethodService
                     );
 
                     if (keyboardView != null) {
+
                         keyboardView.invalidateAllKeys();
                     }
                 }
 
                 break;
 
-            // Enter
+
+            // -------------------------------------------------
+            // ENTER
+            // -------------------------------------------------
+
             case Keyboard.KEYCODE_DONE:
 
-                ic.commitText("\n", 1);
+                ic.commitText(
+                        "\n",
+                        1
+                );
 
                 break;
 
-            // Globe
+
+            // -------------------------------------------------
+            // GLOBE
+            // -------------------------------------------------
+
             case KEYCODE_GLOBE:
 
                 showKeyboardPicker();
 
                 break;
 
-            // Normal Bangla character
+
+            // -------------------------------------------------
+            // NORMAL BANGLA CHARACTER
+            // -------------------------------------------------
+
             default:
 
                 if (primaryCode != 0) {
 
                     String text =
-                            String.valueOf((char) primaryCode);
+                            String.valueOf(
+                                    (char) primaryCode
+                            );
 
-                    ic.commitText(text, 1);
+                    ic.commitText(
+                            text,
+                            1
+                    );
                 }
 
                 break;
         }
     }
 
+
     // =========================================================
-    // VOICE INPUT
+    // START VOICE INPUT
     // =========================================================
 
     private void startVoiceInput() {
 
-        // যদি আগের voice recognition চলতে থাকে
-        if (isListening) {
 
-            stopVoiceInput();
+        // -----------------------------------------------------
+        // Speech Recognition Available?
+        // -----------------------------------------------------
 
-            return;
-        }
-
-        // Speech Recognition আছে কিনা
-        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+        if (!SpeechRecognizer
+                .isRecognitionAvailable(this)) {
 
             Toast.makeText(
                     this,
@@ -176,198 +251,339 @@ public class BanglaIME extends InputMethodService
             return;
         }
 
+
+        // -----------------------------------------------------
         // Microphone Permission
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+        // -----------------------------------------------------
+
+        if (Build.VERSION.SDK_INT >=
+                Build.VERSION_CODES.M) {
+
 
             if (checkSelfPermission(
                     Manifest.permission.RECORD_AUDIO
             ) != PackageManager.PERMISSION_GRANTED) {
 
+
                 Toast.makeText(
                         this,
-                        "Microphone Permission দিতে হবে",
+                        "Microphone Permission প্রয়োজন",
                         Toast.LENGTH_LONG
                 ).show();
-
-                openAppPermissionSettings();
 
                 return;
             }
         }
 
-        // আগের recognizer বন্ধ
+
+        // -----------------------------------------------------
+        // Stop Previous Recognition
+        // -----------------------------------------------------
+
         stopVoiceInput();
+
 
         try {
 
+
             speechRecognizer =
-                    SpeechRecognizer.createSpeechRecognizer(
-                            getApplicationContext()
-                    );
+                    SpeechRecognizer
+                            .createSpeechRecognizer(
+                                    this
+                            );
 
-            speechRecognizer.setRecognitionListener(
-                    new RecognitionListener() {
 
-                        @Override
-                        public void onReadyForSpeech(
-                                Bundle params) {
+            speechRecognizer
+                    .setRecognitionListener(
+                            new RecognitionListener() {
 
-                            isListening = true;
 
-                            Toast.makeText(
-                                    BanglaIME.this,
-                                    "বলুন...",
-                                    Toast.LENGTH_SHORT
-                            ).show();
-                        }
+                                // ---------------------------------
+                                // READY
+                                // ---------------------------------
 
-                        @Override
-                        public void onBeginningOfSpeech() {
+                                @Override
+                                public void onReadyForSpeech(
+                                        Bundle params) {
 
-                            isListening = true;
-                        }
+                                    isListening = true;
 
-                        @Override
-                        public void onRmsChanged(
-                                float rmsdB) {
-                        }
+                                    setVoiceButtonText(
+                                            "🎤 শুনছি..."
+                                    );
+                                }
 
-                        @Override
-                        public void onBufferReceived(
-                                byte[] buffer) {
-                        }
 
-                        @Override
-                        public void onEndOfSpeech() {
+                                // ---------------------------------
+                                // BEGINNING OF SPEECH
+                                // ---------------------------------
 
-                            isListening = false;
-                        }
+                                @Override
+                                public void onBeginningOfSpeech() {
 
-                        @Override
-                        public void onError(
-                                int error) {
+                                    isListening = true;
 
-                            isListening = false;
+                                    setVoiceButtonText(
+                                            "🎤 বলুন..."
+                                    );
+                                }
 
-                            String message;
 
-                            switch (error) {
+                                // ---------------------------------
+                                // VOLUME
+                                // ---------------------------------
 
-                                case SpeechRecognizer.ERROR_AUDIO:
-                                    message = "Microphone-এ সমস্যা হয়েছে";
-                                    break;
+                                @Override
+                                public void onRmsChanged(
+                                        float rmsdB) {
+                                }
 
-                                case SpeechRecognizer.ERROR_CLIENT:
-                                    message = "Voice recognition শুরু করা যায়নি";
-                                    break;
 
-                                case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
-                                    message = "Microphone Permission নেই";
-                                    break;
+                                // ---------------------------------
+                                // BUFFER
+                                // ---------------------------------
 
-                                case SpeechRecognizer.ERROR_NETWORK:
-                                    message = "Network সমস্যা হয়েছে";
-                                    break;
+                                @Override
+                                public void onBufferReceived(
+                                        byte[] buffer) {
+                                }
 
-                                case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
-                                    message = "Network Timeout";
-                                    break;
 
-                                case SpeechRecognizer.ERROR_NO_MATCH:
-                                    message = "কোনো কথা বোঝা যায়নি";
-                                    break;
+                                // ---------------------------------
+                                // END SPEECH
+                                // ---------------------------------
 
-                                case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
-                                    message = "Voice Recognition ব্যস্ত আছে";
-                                    break;
+                                @Override
+                                public void onEndOfSpeech() {
 
-                                case SpeechRecognizer.ERROR_SERVER:
-                                    message = "Voice Server সমস্যা";
-                                    break;
+                                    isListening = false;
 
-                                case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
-                                    message = "কোনো কথা শোনা যায়নি";
-                                    break;
+                                    setVoiceButtonText(
+                                            "🎤 লেখা তৈরি হচ্ছে..."
+                                    );
+                                }
 
-                                default:
-                                    message =
-                                            "Voice Error: " + error;
-                                    break;
-                            }
 
-                            Toast.makeText(
-                                    BanglaIME.this,
-                                    message,
-                                    Toast.LENGTH_LONG
-                            ).show();
+                                // ---------------------------------
+                                // ERROR
+                                // ---------------------------------
 
-                            stopVoiceInput();
-                        }
+                                @Override
+                                public void onError(
+                                        int error) {
 
-                        @Override
-                        public void onResults(
-                                Bundle results) {
+                                    isListening = false;
 
-                            isListening = false;
+                                    String message;
 
-                            if (results == null) {
 
-                                stopVoiceInput();
+                                    switch (error) {
 
-                                return;
-                            }
 
-                            ArrayList<String> matches =
-                                    results.getStringArrayList(
-                                            SpeechRecognizer
-                                                    .RESULTS_RECOGNITION
+                                        case SpeechRecognizer
+                                                .ERROR_AUDIO:
+
+                                            message =
+                                                    "Microphone-এ সমস্যা হয়েছে";
+
+                                            break;
+
+
+                                        case SpeechRecognizer
+                                                .ERROR_NETWORK:
+
+                                            message =
+                                                    "Network সমস্যা হয়েছে";
+
+                                            break;
+
+
+                                        case SpeechRecognizer
+                                                .ERROR_NETWORK_TIMEOUT:
+
+                                            message =
+                                                    "Network Timeout";
+
+                                            break;
+
+
+                                        case SpeechRecognizer
+                                                .ERROR_NO_MATCH:
+
+                                            message =
+                                                    "কোনো কথা বোঝা যায়নি";
+
+                                            break;
+
+
+                                        case SpeechRecognizer
+                                                .ERROR_RECOGNIZER_BUSY:
+
+                                            message =
+                                                    "Voice Recognition ব্যস্ত আছে";
+
+                                            break;
+
+
+                                        case SpeechRecognizer
+                                                .ERROR_SPEECH_TIMEOUT:
+
+                                            message =
+                                                    "কোনো কথা শোনা যায়নি";
+
+                                            break;
+
+
+                                        case SpeechRecognizer
+                                                .ERROR_INSUFFICIENT_PERMISSIONS:
+
+                                            message =
+                                                    "Microphone Permission নেই";
+
+                                            break;
+
+
+                                        default:
+
+                                            message =
+                                                    "Voice Error: "
+                                                            + error;
+
+                                            break;
+                                    }
+
+
+                                    setVoiceButtonText(
+                                            "🎤 ভয়েস দিয়ে লিখুন"
                                     );
 
-                            if (matches != null
-                                    && !matches.isEmpty()) {
 
-                                String recognizedText =
-                                        matches.get(0);
+                                    Toast.makeText(
+                                            BanglaIME.this,
+                                            message,
+                                            Toast.LENGTH_SHORT
+                                    ).show();
 
-                                if (recognizedText != null
-                                        && !recognizedText.trim()
-                                        .isEmpty()) {
 
-                                    InputConnection ic =
-                                            getCurrentInputConnection();
+                                    stopVoiceInput();
+                                }
 
-                                    if (ic != null) {
 
-                                        ic.commitText(
-                                                recognizedText,
-                                                1
-                                        );
+                                // ---------------------------------
+                                // FINAL RESULT
+                                // ---------------------------------
+
+                                @Override
+                                public void onResults(
+                                        Bundle results) {
+
+
+                                    isListening = false;
+
+
+                                    ArrayList<String> matches =
+                                            results.getStringArrayList(
+                                                    SpeechRecognizer
+                                                            .RESULTS_RECOGNITION
+                                            );
+
+
+                                    if (matches != null
+                                            && !matches.isEmpty()) {
+
+
+                                        String finalText =
+                                                matches.get(0);
+
+
+                                        if (finalText != null
+                                                && !finalText
+                                                .trim()
+                                                .isEmpty()) {
+
+
+                                            InputConnection ic =
+                                                    getCurrentInputConnection();
+
+
+                                            if (ic != null) {
+
+                                                ic.commitText(
+                                                        finalText,
+                                                        1
+                                                );
+                                            }
+                                        }
+                                    }
+
+
+                                    setVoiceButtonText(
+                                            "🎤 ভয়েস দিয়ে লিখুন"
+                                    );
+
+
+                                    stopVoiceInput();
+                                }
+
+
+                                // ---------------------------------
+                                // LIVE PARTIAL RESULT
+                                // ---------------------------------
+
+                                @Override
+                                public void onPartialResults(
+                                        Bundle partialResults) {
+
+
+                                    ArrayList<String> partialMatches =
+                                            partialResults
+                                                    .getStringArrayList(
+                                                            SpeechRecognizer
+                                                                    .RESULTS_RECOGNITION
+                                                    );
+
+
+                                    if (partialMatches != null
+                                            && !partialMatches
+                                            .isEmpty()) {
+
+
+                                        String liveText =
+                                                partialMatches
+                                                        .get(0);
+
+
+                                        if (liveText != null
+                                                && !liveText
+                                                .trim()
+                                                .isEmpty()) {
+
+
+                                            setVoiceButtonText(
+                                                    "🎤 "
+                                                            + liveText
+                                            );
+                                        }
                                     }
                                 }
+
+
+                                // ---------------------------------
+                                // EVENT
+                                // ---------------------------------
+
+                                @Override
+                                public void onEvent(
+                                        int eventType,
+                                        Bundle params) {
+                                }
                             }
+                    );
 
-                            stopVoiceInput();
-                        }
 
-                        @Override
-                        public void onPartialResults(
-                                Bundle partialResults) {
-
-                            // এখানে partial text commit করছি না।
-                            // করলে একই লেখা বারবার টাইপ হয়ে যেতে পারে।
-                        }
-
-                        @Override
-                        public void onEvent(
-                                int eventType,
-                                Bundle params) {
-                        }
-                    }
-            );
-
-            // =================================================
-            // Speech Intent
-            // =================================================
+            // -----------------------------------------------------
+            // SPEECH INTENT
+            // -----------------------------------------------------
 
             Intent intent =
                     new Intent(
@@ -375,127 +591,163 @@ public class BanglaIME extends InputMethodService
                                     .ACTION_RECOGNIZE_SPEECH
                     );
 
-            // Free-form speech
+
+            // Free form speech
+
             intent.putExtra(
                     RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                    RecognizerIntent
+                            .LANGUAGE_MODEL_FREE_FORM
             );
 
-            // বাংলা বাংলাদেশ
+
+            // বাংলা - বাংলাদেশ
+
             intent.putExtra(
                     RecognizerIntent.EXTRA_LANGUAGE,
                     "bn-BD"
             );
+
 
             intent.putExtra(
                     RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
                     "bn-BD"
             );
 
-            // সর্বোচ্চ result
+
+            // Maximum results
+
             intent.putExtra(
                     RecognizerIntent.EXTRA_MAX_RESULTS,
                     3
             );
 
-            // Partial result চালু
+
+            // IMPORTANT:
+            // Live result ON
+
             intent.putExtra(
                     RecognizerIntent.EXTRA_PARTIAL_RESULTS,
                     true
             );
 
-            // Calling package
-            intent.putExtra(
-                    RecognizerIntent.EXTRA_CALLING_PACKAGE,
-                    getPackageName()
+
+            // -----------------------------------------------------
+            // Start Listening
+            // -----------------------------------------------------
+
+            speechRecognizer.startListening(
+                    intent
             );
 
-            // Voice recognition শুরু
-            speechRecognizer.startListening(intent);
 
             isListening = true;
 
+
+            setVoiceButtonText(
+                    "🎤 শুনছি..."
+            );
+
+
         } catch (Exception e) {
+
 
             isListening = false;
 
+
+            setVoiceButtonText(
+                    "🎤 ভয়েস দিয়ে লিখুন"
+            );
+
+
             Toast.makeText(
                     this,
-                    "Voice চালু করতে সমস্যা: "
-                            + e.getMessage(),
+                    "Voice চালু করতে সমস্যা হয়েছে",
                     Toast.LENGTH_LONG
             ).show();
+
 
             stopVoiceInput();
         }
     }
 
+
     // =========================================================
-    // STOP VOICE
+    // CHANGE VOICE BUTTON TEXT
+    // =========================================================
+
+    private void setVoiceButtonText(
+            final String text) {
+
+
+        if (voiceButton != null) {
+
+
+            voiceButton.post(
+                    new Runnable() {
+
+                        @Override
+                        public void run() {
+
+                            voiceButton.setText(
+                                    text
+                            );
+                        }
+                    }
+            );
+        }
+    }
+
+
+    // =========================================================
+    // STOP VOICE INPUT
     // =========================================================
 
     private void stopVoiceInput() {
 
+
         isListening = false;
+
 
         if (speechRecognizer != null) {
 
+
             try {
+
                 speechRecognizer.stopListening();
+
             } catch (Exception ignored) {
             }
 
+
             try {
+
                 speechRecognizer.cancel();
+
             } catch (Exception ignored) {
             }
 
+
             try {
+
                 speechRecognizer.destroy();
+
             } catch (Exception ignored) {
             }
+
 
             speechRecognizer = null;
         }
-    }
 
-    // =========================================================
-    // MICROPHONE PERMISSION SETTINGS
-    // =========================================================
 
-    private void openAppPermissionSettings() {
+        if (voiceButton != null) {
 
-        try {
-
-            Intent intent =
-                    new Intent(
-                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-                    );
-
-            Uri uri =
-                    Uri.fromParts(
-                            "package",
-                            getPackageName(),
-                            null
-                    );
-
-            intent.setData(uri);
-
-            intent.addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK
+            setVoiceButtonText(
+                    "🎤 ভয়েস দিয়ে লিখুন"
             );
-
-            startActivity(intent);
-
-        } catch (Exception e) {
-
-            Toast.makeText(
-                    this,
-                    "App Settings খুলতে পারিনি",
-                    Toast.LENGTH_SHORT
-            ).show();
         }
     }
+
 
     // =========================================================
     // KEYBOARD PICKER
@@ -503,11 +755,13 @@ public class BanglaIME extends InputMethodService
 
     private void showKeyboardPicker() {
 
+
         InputMethodManager imm =
                 (InputMethodManager)
                         getSystemService(
                                 Context.INPUT_METHOD_SERVICE
                         );
+
 
         if (imm != null) {
 
@@ -515,35 +769,47 @@ public class BanglaIME extends InputMethodService
         }
     }
 
+
     // =========================================================
-    // onText
+    // ON TEXT
     // =========================================================
 
     @Override
-    public void onText(CharSequence text) {
+    public void onText(
+            CharSequence text) {
+
 
         InputConnection ic =
                 getCurrentInputConnection();
+
 
         if (ic != null
                 && text != null
                 && text.length() > 0) {
 
-            ic.commitText(text, 1);
+
+            ic.commitText(
+                    text,
+                    1
+            );
         }
     }
 
+
     // =========================================================
-    // SERVICE DESTROY
+    // DESTROY
     // =========================================================
 
     @Override
     public void onDestroy() {
 
+
         stopVoiceInput();
+
 
         super.onDestroy();
     }
+
 
     // =========================================================
     // UNUSED SWIPE METHODS
@@ -553,23 +819,30 @@ public class BanglaIME extends InputMethodService
     public void swipeLeft() {
     }
 
+
     @Override
     public void swipeRight() {
     }
 
-    @Override
-    public void swipeUp() {
-    }
 
     @Override
     public void swipeDown() {
     }
 
-    @Override
-    public void onPress(int primaryCode) {
-    }
 
     @Override
-    public void onRelease(int primaryCode) {
+    public void swipeUp() {
     }
-                            }
+
+
+    @Override
+    public void onPress(
+            int primaryCode) {
+    }
+
+
+    @Override
+    public void onRelease(
+            int primaryCode) {
+    }
+}
