@@ -11,11 +11,11 @@
     android:background="#FFFFFF">
 
     <!-- ============================== -->
-    <!-- Advertisement - Keyboard-এর উপরে -->
+    <!-- Advertisement - সবার উপরে -->
     <!-- ============================== -->
 
     <com.google.android.gms.ads.AdView
-        android:id="@+id/banglish_ad_view"
+        android:id="@+id/bangla_ad_view"
         android:layout_width="match_parent"
         android:layout_height="50dp"
         android:layout_gravity="center"
