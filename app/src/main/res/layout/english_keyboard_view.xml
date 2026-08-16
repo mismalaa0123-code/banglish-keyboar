@@ -10,6 +10,8 @@
 
     android:background="#FFFFFF"
 
+    android:keyBackground="@drawable/keyboard_key_background"
+
     android:keyTextColor="#000000"
     android:keyTextSize="20sp"
 
