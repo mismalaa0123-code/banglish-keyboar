@@ -1,21 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<android.inputmethodservice.KeyboardView
+<LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-
-    android:id="@+id/english_keyboard_view"
+    xmlns:ads="http://schemas.android.com/apk/res-auto"
 
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
 
-    android:background="#FFFFFF"
+    android:orientation="vertical"
+    android:background="#FFFFFF">
 
-    android:keyBackground="@drawable/keyboard_key_background"
+    <!-- ============================== -->
+    <!-- Advertisement -->
+    <!-- ============================== -->
 
-    android:keyTextColor="#000000"
-    android:keyTextSize="20sp"
+    <com.google.android.gms.ads.AdView
+        android:id="@+id/english_ad_view"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_gravity="center"
 
-    android:focusable="true"
-    android:focusableInTouchMode="true"
+        ads:adSize="BANNER"
+        ads:adUnitId="ca-app-pub-3940256099942544/6300978111" />
 
-    android:padding="4dp" />
+    <!-- ============================== -->
+    <!-- English Keyboard -->
+    <!-- ============================== -->
+
+    <android.inputmethodservice.KeyboardView
+        android:id="@+id/english_keyboard_view"
+
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:background="#FFFFFF"
+
+        android:keyBackground="@drawable/keyboard_key_background"
+
+        android:keyTextColor="#000000"
+        android:keyTextSize="20sp"
+
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+
+        android:padding="4dp" />
+
+</LinearLayout>
