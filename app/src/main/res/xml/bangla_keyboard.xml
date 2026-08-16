@@ -7,118 +7,334 @@
     android:horizontalGap="0dp"
     android:verticalGap="1dp">
 
+    <!-- ============================= -->
     <!-- বাংলা স্বরবর্ণ -->
+    <!-- ============================= -->
 
     <Row android:rowEdgeFlags="top">
 
-        <Key android:codes="2437" android:keyLabel="অ" />
-        <Key android:codes="2438" android:keyLabel="আ" />
-        <Key android:codes="2439" android:keyLabel="ই" />
-        <Key android:codes="2440" android:keyLabel="ঈ" />
-        <Key android:codes="2441" android:keyLabel="উ" />
-        <Key android:codes="2442" android:keyLabel="ঊ" />
-        <Key android:codes="2443" android:keyLabel="ঋ" />
-        <Key android:codes="2447" android:keyLabel="এ" />
-        <Key android:codes="2448" android:keyLabel="ঐ" />
-        <Key android:codes="2451" android:keyLabel="ও" />
+        <Key
+            android:codes="2437"
+            android:keyLabel="অ" />
+
+        <Key
+            android:codes="2438"
+            android:keyLabel="আ" />
+
+        <Key
+            android:codes="2439"
+            android:keyLabel="ই" />
+
+        <Key
+            android:codes="2440"
+            android:keyLabel="ঈ" />
+
+        <Key
+            android:codes="2441"
+            android:keyLabel="উ" />
+
+        <Key
+            android:codes="2442"
+            android:keyLabel="ঊ" />
+
+        <Key
+            android:codes="2443"
+            android:keyLabel="ঋ" />
+
+        <Key
+            android:codes="2447"
+            android:keyLabel="এ" />
+
+        <Key
+            android:codes="2448"
+            android:keyLabel="ঐ" />
+
+        <Key
+            android:codes="2451"
+            android:keyLabel="ও" />
 
     </Row>
+
+
+    <!-- ============================= -->
+    <!-- বাংলা ব্যঞ্জনবর্ণ - ১ -->
+    <!-- ============================= -->
 
     <Row>
 
-        <Key android:codes="2452" android:keyLabel="ঔ" />
-        <Key android:codes="2453" android:keyLabel="ক" />
-        <Key android:codes="2454" android:keyLabel="খ" />
-        <Key android:codes="2455" android:keyLabel="গ" />
-        <Key android:codes="2456" android:keyLabel="ঘ" />
-        <Key android:codes="2457" android:keyLabel="ঙ" />
-        <Key android:codes="2458" android:keyLabel="চ" />
-        <Key android:codes="2459" android:keyLabel="ছ" />
-        <Key android:codes="2460" android:keyLabel="জ" />
-        <Key android:codes="2461" android:keyLabel="ঝ" />
+        <Key
+            android:codes="2452"
+            android:keyLabel="ঔ" />
+
+        <Key
+            android:codes="2453"
+            android:keyLabel="ক" />
+
+        <Key
+            android:codes="2454"
+            android:keyLabel="খ" />
+
+        <Key
+            android:codes="2455"
+            android:keyLabel="গ" />
+
+        <Key
+            android:codes="2456"
+            android:keyLabel="ঘ" />
+
+        <Key
+            android:codes="2457"
+            android:keyLabel="ঙ" />
+
+        <Key
+            android:codes="2458"
+            android:keyLabel="চ" />
+
+        <Key
+            android:codes="2459"
+            android:keyLabel="ছ" />
+
+        <Key
+            android:codes="2460"
+            android:keyLabel="জ" />
+
+        <Key
+            android:codes="2461"
+            android:keyLabel="ঝ" />
 
     </Row>
+
+
+    <!-- ============================= -->
+    <!-- বাংলা ব্যঞ্জনবর্ণ - ২ -->
+    <!-- ============================= -->
 
     <Row>
 
-        <Key android:codes="2462" android:keyLabel="ঞ" />
-        <Key android:codes="2463" android:keyLabel="ট" />
-        <Key android:codes="2464" android:keyLabel="ঠ" />
-        <Key android:codes="2465" android:keyLabel="ড" />
-        <Key android:codes="2466" android:keyLabel="ঢ" />
-        <Key android:codes="2467" android:keyLabel="ণ" />
-        <Key android:codes="2468" android:keyLabel="ত" />
-        <Key android:codes="2469" android:keyLabel="থ" />
-        <Key android:codes="2470" android:keyLabel="দ" />
-        <Key android:codes="2471" android:keyLabel="ধ" />
+        <Key
+            android:codes="2462"
+            android:keyLabel="ঞ" />
+
+        <Key
+            android:codes="2463"
+            android:keyLabel="ট" />
+
+        <Key
+            android:codes="2464"
+            android:keyLabel="ঠ" />
+
+        <Key
+            android:codes="2465"
+            android:keyLabel="ড" />
+
+        <Key
+            android:codes="2466"
+            android:keyLabel="ঢ" />
+
+        <Key
+            android:codes="2467"
+            android:keyLabel="ণ" />
+
+        <Key
+            android:codes="2468"
+            android:keyLabel="ত" />
+
+        <Key
+            android:codes="2469"
+            android:keyLabel="থ" />
+
+        <Key
+            android:codes="2470"
+            android:keyLabel="দ" />
+
+        <Key
+            android:codes="2471"
+            android:keyLabel="ধ" />
 
     </Row>
+
+
+    <!-- ============================= -->
+    <!-- বাংলা ব্যঞ্জনবর্ণ - ৩ -->
+    <!-- ============================= -->
 
     <Row>
 
-        <Key android:codes="2472" android:keyLabel="ন" />
-        <Key android:codes="2474" android:keyLabel="প" />
-        <Key android:codes="2475" android:keyLabel="ফ" />
-        <Key android:codes="2476" android:keyLabel="ব" />
-        <Key android:codes="2477" android:keyLabel="ভ" />
-        <Key android:codes="2478" android:keyLabel="ম" />
-        <Key android:codes="2479" android:keyLabel="য" />
-        <Key android:codes="2480" android:keyLabel="র" />
-        <Key android:codes="2482" android:keyLabel="ল" />
-        <Key android:codes="2486" android:keyLabel="শ" />
+        <Key
+            android:codes="2472"
+            android:keyLabel="ন" />
+
+        <Key
+            android:codes="2474"
+            android:keyLabel="প" />
+
+        <Key
+            android:codes="2475"
+            android:keyLabel="ফ" />
+
+        <Key
+            android:codes="2476"
+            android:keyLabel="ব" />
+
+        <Key
+            android:codes="2477"
+            android:keyLabel="ভ" />
+
+        <Key
+            android:codes="2478"
+            android:keyLabel="ম" />
+
+        <Key
+            android:codes="2479"
+            android:keyLabel="য" />
+
+        <Key
+            android:codes="2480"
+            android:keyLabel="র" />
+
+        <Key
+            android:codes="2482"
+            android:keyLabel="ল" />
+
+        <Key
+            android:codes="2486"
+            android:keyLabel="শ" />
 
     </Row>
+
+
+    <!-- ============================= -->
+    <!-- বাংলা ব্যঞ্জনবর্ণ - ৪ -->
+    <!-- Duplicate স্বরবর্ণ বাদ দেওয়া হয়েছে -->
+    <!-- ============================= -->
 
     <Row>
 
-        <Key android:codes="2487" android:keyLabel="ষ" />
-        <Key android:codes="2488" android:keyLabel="স" />
-        <Key android:codes="2489" android:keyLabel="হ" />
-        <Key android:codes="2524" android:keyLabel="ড়" />
-        <Key android:codes="2525" android:keyLabel="ঢ়" />
-        <Key android:codes="2527" android:keyLabel="য়" />
-        <Key android:codes="2439" android:keyLabel="ই" />
-        <Key android:codes="2440" android:keyLabel="ঈ" />
-        <Key android:codes="2441" android:keyLabel="উ" />
-        <Key android:codes="2442" android:keyLabel="ঊ" />
+        <Key
+            android:codes="2487"
+            android:keyLabel="ষ"
+            android:keyWidth="16.67%p" />
+
+        <Key
+            android:codes="2488"
+            android:keyLabel="স"
+            android:keyWidth="16.67%p" />
+
+        <Key
+            android:codes="2489"
+            android:keyLabel="হ"
+            android:keyWidth="16.67%p" />
+
+        <Key
+            android:codes="2524"
+            android:keyLabel="ড়"
+            android:keyWidth="16.67%p" />
+
+        <Key
+            android:codes="2525"
+            android:keyLabel="ঢ়"
+            android:keyWidth="16.67%p" />
+
+        <Key
+            android:codes="2527"
+            android:keyLabel="য়"
+            android:keyWidth="16.65%p" />
 
     </Row>
 
+
+    <!-- ============================= -->
     <!-- বাংলা কার -->
+    <!-- ============================= -->
 
     <Row>
 
-        <Key android:codes="2494" android:keyLabel="া" />
-        <Key android:codes="2495" android:keyLabel="ি" />
-        <Key android:codes="2496" android:keyLabel="ী" />
-        <Key android:codes="2497" android:keyLabel="ু" />
-        <Key android:codes="2498" android:keyLabel="ূ" />
-        <Key android:codes="2499" android:keyLabel="ৃ" />
-        <Key android:codes="2503" android:keyLabel="ে" />
-        <Key android:codes="2504" android:keyLabel="ৈ" />
-        <Key android:codes="2507" android:keyLabel="ো" />
-        <Key android:codes="2508" android:keyLabel="ৌ" />
+        <Key
+            android:codes="2494"
+            android:keyLabel="া" />
+
+        <Key
+            android:codes="2495"
+            android:keyLabel="ি" />
+
+        <Key
+            android:codes="2496"
+            android:keyLabel="ী" />
+
+        <Key
+            android:codes="2497"
+            android:keyLabel="ু" />
+
+        <Key
+            android:codes="2498"
+            android:keyLabel="ূ" />
+
+        <Key
+            android:codes="2499"
+            android:keyLabel="ৃ" />
+
+        <Key
+            android:codes="2503"
+            android:keyLabel="ে" />
+
+        <Key
+            android:codes="2504"
+            android:keyLabel="ৈ" />
+
+        <Key
+            android:codes="2507"
+            android:keyLabel="ো" />
+
+        <Key
+            android:codes="2508"
+            android:keyLabel="ৌ" />
 
     </Row>
 
-    <!-- বাংলা চিহ্ন -->
+
+    <!-- ============================= -->
+    <!-- বাংলা চিহ্ন + Control Keys -->
+    <!-- ============================= -->
 
     <Row android:rowEdgeFlags="bottom">
 
-        <Key android:codes="2433" android:keyLabel="ঁ" />
-        <Key android:codes="2434" android:keyLabel="ং" />
-        <Key android:codes="2435" android:keyLabel="ঃ" />
-        <Key android:codes="2492" android:keyLabel="্" />
+        <!-- Global / Language -->
 
         <Key
             android:codes="-100"
             android:keyLabel="🌐"
             android:keyWidth="9.09%p" />
 
+        <!-- বাংলা চিহ্ন -->
+
+        <Key
+            android:codes="2433"
+            android:keyLabel="ঁ"
+            android:keyWidth="9.09%p" />
+
+        <Key
+            android:codes="2434"
+            android:keyLabel="ং"
+            android:keyWidth="9.09%p" />
+
+        <Key
+            android:codes="2435"
+            android:keyLabel="ঃ"
+            android:keyWidth="9.09%p" />
+
+        <Key
+            android:codes="2492"
+            android:keyLabel="্"
+            android:keyWidth="9.09%p" />
+
+        <!-- কমা -->
+
         <Key
             android:codes="44"
             android:keyLabel=","
             android:keyWidth="9.09%p" />
+
+        <!-- স্পেস: মাঝখানে -->
 
         <Key
             android:codes="32"
@@ -126,10 +342,14 @@
             android:keyWidth="27.27%p"
             android:isRepeatable="true" />
 
+        <!-- Delete -->
+
         <Key
             android:codes="-5"
             android:keyLabel="⌫"
             android:keyWidth="9.09%p" />
+
+        <!-- Enter -->
 
         <Key
             android:codes="10"
