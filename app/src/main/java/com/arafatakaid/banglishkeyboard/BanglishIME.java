@@ -14,6 +14,7 @@ import android.view.View;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -116,6 +117,16 @@ public class BanglishIME extends InputMethodService
                 root.findViewById(
                         R.id.keyboard_view
                 );
+
+        FrameLayout bannerContainer =
+                root.findViewById(
+                        R.id.startio_banner_container
+                );
+
+        StartIoBannerHelper.attach(
+                this,
+                bannerContainer
+        );
 
         qwertyKeyboard =
                 new Keyboard(
