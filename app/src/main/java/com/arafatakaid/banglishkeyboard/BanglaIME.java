@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -64,6 +65,21 @@ public class BanglaIME extends InputMethodService
                 root.findViewById(
                         R.id.bangla_voice_button
                 );
+
+
+        // -----------------------------------------------------
+        // Start.io Banner
+        // -----------------------------------------------------
+
+        FrameLayout bannerContainer =
+                root.findViewById(
+                        R.id.startio_banner_container
+                );
+
+        StartIoBannerHelper.attach(
+                this,
+                bannerContainer
+        );
 
 
         // -----------------------------------------------------
