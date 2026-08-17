@@ -50,6 +50,6 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
-    // Google Mobile Ads SDK
-    implementation 'com.google.android.gms:play-services-ads:24.6.0'
+    // Start.io SDK
+    implementation 'com.startapp:inapp-sdk:5.+'
 }
