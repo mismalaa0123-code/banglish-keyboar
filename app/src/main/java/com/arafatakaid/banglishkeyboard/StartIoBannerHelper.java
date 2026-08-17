@@ -6,7 +6,6 @@ import android.view.View;
 import android.widget.FrameLayout;
 
 import com.startapp.sdk.ads.banner.Banner;
-import com.startapp.sdk.ads.banner.BannerListener;
 
 public final class StartIoBannerHelper {
 
@@ -23,41 +22,13 @@ public final class StartIoBannerHelper {
             return;
         }
 
-        // শুরুতে Banner-এর জায়গা থাকবে না
-        container.setVisibility(View.GONE);
-
-        // আগের কোনো Banner থাকলে সরিয়ে দেবে
+        // আগের Banner থাকলে সরিয়ে দাও
         container.removeAllViews();
 
-        Banner banner = new Banner(
-                context,
-                new BannerListener() {
+        // Banner তৈরি
+        Banner banner = new Banner(context);
 
-                    @Override
-                    public void onReceiveAd(View view) {
-                        // Ad সফলভাবে load হলে
-                        // Banner-এর জায়গা দেখা যাবে
-                        container.setVisibility(View.VISIBLE);
-                    }
-
-                    @Override
-                    public void onFailedToReceiveAd(View view) {
-                        // Ad না এলে কোনো জায়গা থাকবে না
-                        container.setVisibility(View.GONE);
-                    }
-
-                    @Override
-                    public void onImpression(View view) {
-                        // Banner impression
-                    }
-
-                    @Override
-                    public void onClick(View view) {
-                        // Banner click
-                    }
-                }
-        );
-
+        // Banner-এর layout
         FrameLayout.LayoutParams params =
                 new FrameLayout.LayoutParams(
                         FrameLayout.LayoutParams.WRAP_CONTENT,
@@ -66,9 +37,13 @@ public final class StartIoBannerHelper {
 
         params.gravity = Gravity.CENTER;
 
+        // Container-এ Banner যোগ
         container.addView(
                 banner,
                 params
         );
+
+        // Banner দৃশ্যমান
+        container.setVisibility(View.VISIBLE);
     }
-            }
+}
