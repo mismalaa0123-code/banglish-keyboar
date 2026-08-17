@@ -15,11 +15,6 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat">
 
-        <!-- Google Mobile Ads - TEST App ID -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
-
         <!-- Main App -->
         <activity
             android:name=".MainActivity"
@@ -33,7 +28,7 @@
         </activity>
 
         <!-- ================================================= -->
-        <!-- 1. Existing Banglish Keyboard -->
+        <!-- 1. Banglish Keyboard -->
         <!-- ================================================= -->
 
         <service
