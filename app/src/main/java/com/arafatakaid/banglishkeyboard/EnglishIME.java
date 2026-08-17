@@ -8,6 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.FrameLayout;
 
 public class EnglishIME extends InputMethodService
         implements KeyboardView.OnKeyboardActionListener {
@@ -21,28 +22,61 @@ public class EnglishIME extends InputMethodService
     public View onCreateInputView() {
 
         View root = LayoutInflater.from(this)
-                .inflate(R.layout.english_keyboard_view, null);
+                .inflate(
+                        R.layout.english_keyboard_view,
+                        null
+                );
 
         keyboardView = root.findViewById(
                 R.id.english_keyboard_view
         );
+
+        // ==========================================
+        // Start.io Banner
+        // ==========================================
+
+        FrameLayout bannerContainer =
+                root.findViewById(
+                        R.id.startio_banner_container
+                );
+
+        StartIoBannerHelper.attach(
+                this,
+                bannerContainer
+        );
+
+        // ==========================================
+        // English Keyboard
+        // ==========================================
 
         englishKeyboard = new Keyboard(
                 this,
                 R.xml.english_qwerty
         );
 
-        keyboardView.setKeyboard(englishKeyboard);
-        keyboardView.setOnKeyboardActionListener(this);
-        keyboardView.setPreviewEnabled(false);
+        keyboardView.setKeyboard(
+                englishKeyboard
+        );
+
+        keyboardView.setOnKeyboardActionListener(
+                this
+        );
+
+        keyboardView.setPreviewEnabled(
+                false
+        );
 
         return root;
     }
 
     @Override
-    public void onKey(int primaryCode, int[] keyCodes) {
+    public void onKey(
+            int primaryCode,
+            int[] keyCodes
+    ) {
 
-        InputConnection ic = getCurrentInputConnection();
+        InputConnection ic =
+                getCurrentInputConnection();
 
         if (ic == null) {
             return;
@@ -54,7 +88,10 @@ public class EnglishIME extends InputMethodService
 
                 case Keyboard.KEYCODE_DELETE:
 
-                    ic.deleteSurroundingText(1, 0);
+                    ic.deleteSurroundingText(
+                            1,
+                            0
+                    );
 
                     break;
 
@@ -70,7 +107,10 @@ public class EnglishIME extends InputMethodService
 
                 case Keyboard.KEYCODE_DONE:
 
-                    ic.commitText("\n", 1);
+                    ic.commitText(
+                            "\n",
+                            1
+                    );
 
                     break;
 
@@ -83,25 +123,35 @@ public class EnglishIME extends InputMethodService
                 default:
 
                     if (primaryCode >= 0
-                            && primaryCode <= Character.MAX_VALUE) {
+                            && primaryCode
+                            <= Character.MAX_VALUE) {
 
-                        char character = (char) primaryCode;
+                        char character =
+                                (char) primaryCode;
 
                         if (englishKeyboard.isShifted()
-                                && Character.isLetter(character)) {
+                                && Character.isLetter(
+                                        character
+                                )) {
 
                             character =
-                                    Character.toUpperCase(character);
+                                    Character.toUpperCase(
+                                            character
+                                    );
                         }
 
                         ic.commitText(
-                                String.valueOf(character),
+                                String.valueOf(
+                                        character
+                                ),
                                 1
                         );
 
                         if (englishKeyboard.isShifted()) {
 
-                            englishKeyboard.setShifted(false);
+                            englishKeyboard.setShifted(
+                                    false
+                            );
 
                             keyboardView.invalidateAllKeys();
                         }
@@ -126,6 +176,7 @@ public class EnglishIME extends InputMethodService
                             );
 
             if (imm != null) {
+
                 imm.showInputMethodPicker();
             }
 
@@ -134,9 +185,13 @@ public class EnglishIME extends InputMethodService
     }
 
     @Override
-    public void onText(CharSequence text) {
+    public void onText(
+            CharSequence text
+    ) {
 
-        if (text == null || text.length() == 0) {
+        if (text == null
+                || text.length() == 0) {
+
             return;
         }
 
@@ -144,16 +199,24 @@ public class EnglishIME extends InputMethodService
                 getCurrentInputConnection();
 
         if (ic != null) {
-            ic.commitText(text, 1);
+
+            ic.commitText(
+                    text,
+                    1
+            );
         }
     }
 
     @Override
-    public void onPress(int primaryCode) {
+    public void onPress(
+            int primaryCode
+    ) {
     }
 
     @Override
-    public void onRelease(int primaryCode) {
+    public void onRelease(
+            int primaryCode
+    ) {
     }
 
     @Override
@@ -171,4 +234,4 @@ public class EnglishIME extends InputMethodService
     @Override
     public void swipeUp() {
     }
-}
+        }
