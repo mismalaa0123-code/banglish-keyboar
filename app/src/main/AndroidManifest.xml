@@ -2,10 +2,20 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Internet -->
-    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- ============================================== -->
+    <!-- Network Permissions -->
+    <!-- ============================================== -->
 
-    <!-- Voice input -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Android 12+ Advertising ID -->
+    <uses-permission android:name="android.permission.AD_ID" />
+
+    <!-- ============================================== -->
+    <!-- Voice Input -->
+    <!-- ============================================== -->
+
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
@@ -16,7 +26,7 @@
         android:theme="@style/Theme.AppCompat">
 
         <!-- ============================================== -->
-        <!-- Start.io -->
+        <!-- Start.io App ID -->
         <!-- ============================================== -->
 
         <meta-data
@@ -39,7 +49,7 @@
         </activity>
 
         <!-- ============================================== -->
-        <!-- 1. Banglish Keyboard -->
+        <!-- Banglish Keyboard -->
         <!-- ============================================== -->
 
         <service
@@ -59,7 +69,7 @@
         </service>
 
         <!-- ============================================== -->
-        <!-- 2. English Keyboard -->
+        <!-- English Keyboard -->
         <!-- ============================================== -->
 
         <service
@@ -79,7 +89,7 @@
         </service>
 
         <!-- ============================================== -->
-        <!-- 3. Bangla Keyboard -->
+        <!-- Bangla Keyboard -->
         <!-- ============================================== -->
 
         <service
