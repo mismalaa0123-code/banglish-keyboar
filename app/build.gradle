@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace 'com.arafatakaid.banglishkeyboard'
-    compileSdk 37
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.arafatakaid.banglishkeyboard"
@@ -51,5 +51,5 @@ dependencies {
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
     // Start.io SDK
-    implementation 'com.startapp:inapp-sdk:5.+'
+    implementation 'com.startapp:inapp-sdk:5.2.0'
 }
