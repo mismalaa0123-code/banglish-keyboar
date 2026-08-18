@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.arafatakaid.banglishkeyboard1'
+    namespace 'com.arafatakaid.banglishkeyboard'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.arafatakaid.banglishkeyboard1"
+        applicationId "com.arafatakaid.banglishkeyboard"
         minSdk 24
         targetSdk 34
         versionCode 1
