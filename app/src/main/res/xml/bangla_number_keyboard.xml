@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<Keyboard
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:keyWidth="10%p"
+    android:keyHeight="44dp"
+    android:horizontalGap="1dp"
+    android:verticalGap="1dp">
+
+    <!-- ============================================ -->
+    <!-- ROW 1: বাংলা সংখ্যা (10 keys) -->
+    <!-- ============================================ -->
+
+    <Row android:rowEdgeFlags="top">
+
+        <Key android:codes="2534" android:keyLabel="১" />
+        <Key android:codes="2535" android:keyLabel="২" />
+        <Key android:codes="2536" android:keyLabel="৩" />
+        <Key android:codes="2537" android:keyLabel="৪" />
+        <Key android:codes="2538" android:keyLabel="৫" />
+        <Key android:codes="2539" android:keyLabel="৬" />
+        <Key android:codes="2540" android:keyLabel="৭" />
+        <Key android:codes="2541" android:keyLabel="৮" />
+        <Key android:codes="2542" android:keyLabel="৯" />
+        <Key android:codes="2543" android:keyLabel="০" />
+
+    </Row>
+
+    <!-- ============================================ -->
+    <!-- ROW 2: Symbols (10 keys) -->
+    <!-- ============================================ -->
+
+    <Row>
+
+        <Key android:codes="64"  android:keyLabel="@" />
+        <Key android:codes="35"  android:keyLabel="#" />
+        <Key android:codes="37"  android:keyLabel="%" />
+        <Key android:codes="38"  android:keyLabel="&amp;" />
+        <Key android:codes="45"  android:keyLabel="-" />
+        <Key android:codes="43"  android:keyLabel="+" />
+        <Key android:codes="40"  android:keyLabel="(" />
+        <Key android:codes="41"  android:keyLabel=")" />
+        <Key android:codes="61"  android:keyLabel="=" />
+        <Key android:codes="42"  android:keyLabel="*" />
+
+    </Row>
+
+    <!-- ============================================ -->
+    <!-- ROW 3: More Symbols (10 keys) -->
+    <!-- ============================================ -->
+
+    <Row>
+
+        <Key android:codes="34"  android:keyLabel="&quot;" />
+        <Key android:codes="39"  android:keyLabel="'" />
+        <Key android:codes="58"  android:keyLabel=":" />
+        <Key android:codes="59"  android:keyLabel=";" />
+        <Key android:codes="33"  android:keyLabel="!" />
+        <Key android:codes="63"  android:keyLabel="?" />
+        <Key android:codes="47"  android:keyLabel="/" />
+        <Key android:codes="92"  android:keyLabel="\\" />
+        <Key android:codes="60"  android:keyLabel="&lt;" />
+        <Key android:codes="62"  android:keyLabel="&gt;" />
+
+    </Row>
+
+    <!-- ============================================ -->
+    <!-- ROW 4: More Symbols + Special (10 keys) -->
+    <!-- ============================================ -->
+
+    <Row>
+
+        <Key android:codes="2433" android:keyLabel="ঁ" />
+        <Key android:codes="2434" android:keyLabel="ং" />
+        <Key android:codes="2435" android:keyLabel="ঃ" />
+        <Key android:codes="2492" android:keyLabel="্" />
+        <Key android:codes="2531" android:keyLabel="৳" />
+        <Key android:codes="2501" android:keyLabel="ৎ" />
+        <Key android:codes="2502" android:keyLabel="ঽ" />
+        <Key android:codes="2511" android:keyLabel="৻" />
+        <Key android:codes="46"   android:keyLabel="." />
+        <Key
+            android:codes="-5"
+            android:keyLabel="⌫"
+            android:isRepeatable="false" />
+
+    </Row>
+
+    <!-- ============================================ -->
+    <!-- ROW 5: BOTTOM CONTROLS -->
+    <!-- ============================================ -->
+
+    <Row android:rowEdgeFlags="bottom">
+
+        <!-- ABC: back to Bengali -->
+        <Key
+            android:codes="-203"
+            android:keyLabel="ABC"
+            android:keyWidth="13.63%p" />
+
+        <!-- Comma -->
+        <Key
+            android:codes="44"
+            android:keyLabel=","
+            android:keyWidth="13.63%p" />
+
+        <!-- Space -->
+        <Key
+            android:codes="32"
+            android:keyLabel=" "
+            android:keyWidth="27.27%p"
+            android:isRepeatable="true" />
+
+        <!-- Period -->
+        <Key
+            android:codes="46"
+            android:keyLabel="."
+            android:keyWidth="13.63%p" />
+
+        <!-- Enter -->
+        <Key
+            android:codes="10"
+            android:keyLabel="↵"
+            android:keyWidth="13.63%p" />
+
+        <!-- Emoji (also available here) -->
+        <Key
+            android:codes="-201"
+            android:keyLabel="😀"
+            android:keyWidth="13.63%p" />
+
+        <!-- Globe -->
+        <Key
+            android:codes="-100"
+            android:keyLabel="🌐"
+            android:keyWidth="13.63%p" />
+
+    </Row>
+
+</Keyboard>
