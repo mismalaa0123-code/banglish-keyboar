@@ -28,18 +28,12 @@ import java.util.ArrayList;
 public class BanglaIME extends InputMethodService
         implements KeyboardView.OnKeyboardActionListener {
 
-    // =========================================================
-    // CUSTOM KEY CODES
-    // =========================================================
     private static final int KEYCODE_GLOBE       = -100;
     private static final int KEYCODE_NUMBER_MODE = -200;
     private static final int KEYCODE_EMOJI       = -201;
     private static final int KEYCODE_CURSOR      = -202;
     private static final int KEYCODE_ABC         = -203;
 
-    // =========================================================
-    // VIEW REFERENCES
-    // =========================================================
     private KeyboardView keyboardView;
     private Keyboard banglaKeyboard;
     private Keyboard numberKeyboard;
@@ -50,21 +44,12 @@ public class BanglaIME extends InputMethodService
 
     private LinearLayout emojiPanel;
 
-    // =========================================================
-    // STATE
-    // =========================================================
     private boolean isNumberMode = false;
     private boolean isEmojiPanelOpen = false;
 
-    // =========================================================
-    // VOICE
-    // =========================================================
     private SpeechRecognizer speechRecognizer;
     private boolean isListening = false;
 
-    // =========================================================
-    // EMOJI DATA
-    // =========================================================
     private static final String[] EMOJIS = {
             "\uD83D\uDE03", "\uD83D\uDE02", "\uD83D\uDE0D", "\uD83D\uDE24",
             "\u2764\uFE0F", "\uD83D\uDE2F", "\uD83D\uDE18", "\uD83D\uDE17",
@@ -76,43 +61,22 @@ public class BanglaIME extends InputMethodService
             "\uD83D\uDCAA", "\uD83D\uDE4B", "\uD83D\uDC4B", "\u2728"
     };
 
-    // =========================================================
-    // CREATE KEYBOARD VIEW
-    // =========================================================
     @Override
     public View onCreateInputView() {
 
         View root = getLayoutInflater()
                 .inflate(R.layout.bangla_keyboard_view, null);
 
-        // -----------------------------------------------------
-        // Keyboard View
-        // -----------------------------------------------------
         keyboardView = root.findViewById(R.id.bangla_keyboard_view);
-
-        // -----------------------------------------------------
-        // Toolbar Buttons
-        // -----------------------------------------------------
         voiceButton = root.findViewById(R.id.bangla_voice_button);
         emojiButton = root.findViewById(R.id.bangla_emoji_button);
         clipboardButton = root.findViewById(R.id.bangla_clipboard_button);
-
-        // -----------------------------------------------------
-        // Emoji Panel
-        // -----------------------------------------------------
         emojiPanel = root.findViewById(R.id.bangla_emoji_panel);
 
-        // -----------------------------------------------------
-        // Start.io Banner
-        // -----------------------------------------------------
         FrameLayout bannerContainer =
                 root.findViewById(R.id.startio_banner_container);
-
         StartIoBannerHelper.attach(this, bannerContainer);
 
-        // -----------------------------------------------------
-        // Build Keyboards
-        // -----------------------------------------------------
         banglaKeyboard = new Keyboard(this, R.xml.bangla_keyboard);
         numberKeyboard = new Keyboard(this, R.xml.bangla_number_keyboard);
 
@@ -120,44 +84,42 @@ public class BanglaIME extends InputMethodService
         keyboardView.setOnKeyboardActionListener(this);
         keyboardView.setPreviewEnabled(false);
 
-        // -----------------------------------------------------
-        // Voice Button
-        // -----------------------------------------------------
         if (voiceButton != null) {
-            voiceButton.setOnClickListener(v -> {
-                if (isListening) {
-                    stopVoiceInput();
-                } else {
-                    startVoiceInput();
+            voiceButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (isListening) {
+                        stopVoiceInput();
+                    } else {
+                        startVoiceInput();
+                    }
                 }
             });
         }
 
-        // -----------------------------------------------------
-        // Emoji Button (toolbar)
-        // -----------------------------------------------------
         if (emojiButton != null) {
-            emojiButton.setOnClickListener(v -> toggleEmojiPanel());
+            emojiButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    toggleEmojiPanel();
+                }
+            });
         }
 
-        // -----------------------------------------------------
-        // Clipboard Button
-        // -----------------------------------------------------
         if (clipboardButton != null) {
-            clipboardButton.setOnClickListener(v -> pasteFromClipboard());
+            clipboardButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    pasteFromClipboard();
+                }
+            });
         }
 
-        // -----------------------------------------------------
-        // Build Emoji Panel
-        // -----------------------------------------------------
         buildEmojiPanel();
 
         return root;
     }
 
-    // =========================================================
-    // BUILD EMOJI PANEL
-    // =========================================================
     private void buildEmojiPanel() {
         if (emojiPanel == null) return;
         emojiPanel.removeAllViews();
@@ -196,10 +158,13 @@ public class BanglaIME extends InputMethodService
                     emojiBtn.setLayoutParams(btnParams);
 
                     final String emoji = EMOJIS[i + j];
-                    emojiBtn.setOnClickListener(v -> {
-                        InputConnection ic = getCurrentInputConnection();
-                        if (ic != null) {
-                            ic.commitText(emoji, 1);
+                    emojiBtn.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            InputConnection ic = getCurrentInputConnection();
+                            if (ic != null) {
+                                ic.commitText(emoji, 1);
+                            }
                         }
                     });
 
@@ -210,9 +175,6 @@ public class BanglaIME extends InputMethodService
         }
     }
 
-    // =========================================================
-    // TOGGLE EMOJI PANEL
-    // =========================================================
     private void toggleEmojiPanel() {
         if (emojiPanel == null || keyboardView == null) return;
 
@@ -227,9 +189,6 @@ public class BanglaIME extends InputMethodService
         }
     }
 
-    // =========================================================
-    // PASTE FROM CLIPBOARD
-    // =========================================================
     private void pasteFromClipboard() {
         try {
             ClipboardManager cm =
@@ -254,9 +213,6 @@ public class BanglaIME extends InputMethodService
         }
     }
 
-    // =========================================================
-    // KEYBOARD KEY HANDLER
-    // =========================================================
     @Override
     public void onKey(int primaryCode, int[] keyCodes) {
 
@@ -265,58 +221,34 @@ public class BanglaIME extends InputMethodService
 
         switch (primaryCode) {
 
-            // -------------------------------------------------
-            // DELETE (normal tap = delete 1 char)
-            // -------------------------------------------------
             case Keyboard.KEYCODE_DELETE:
                 ic.deleteSurroundingText(1, 0);
                 break;
 
-            // -------------------------------------------------
-            // ENTER (EditorInfo-based)
-            // -------------------------------------------------
             case Keyboard.KEYCODE_DONE:
                 handleEnter(ic);
                 break;
 
-            // -------------------------------------------------
-            // GLOBE
-            // -------------------------------------------------
             case KEYCODE_GLOBE:
                 showKeyboardPicker();
                 break;
 
-            // -------------------------------------------------
-            // NUMBER MODE SWITCH (?123)
-            // -------------------------------------------------
             case KEYCODE_NUMBER_MODE:
                 switchToNumberMode();
                 break;
 
-            // -------------------------------------------------
-            // ABC (back to Bengali from number mode)
-            // -------------------------------------------------
             case KEYCODE_ABC:
                 switchToBengaliMode();
                 break;
 
-            // -------------------------------------------------
-            // EMOJI
-            // -------------------------------------------------
             case KEYCODE_EMOJI:
                 toggleEmojiPanel();
                 break;
 
-            // -------------------------------------------------
-            // CURSOR CONTROL
-            // -------------------------------------------------
             case KEYCODE_CURSOR:
                 handleCursorControl(ic);
                 break;
 
-            // -------------------------------------------------
-            // NORMAL CHARACTER
-            // -------------------------------------------------
             default:
                 if (primaryCode > 0) {
                     String text = String.valueOf((char) primaryCode);
@@ -326,24 +258,17 @@ public class BanglaIME extends InputMethodService
         }
     }
 
-    // =========================================================
-    // LONG PRESS (Backspace = Clear All)
-    // =========================================================
     @Override
     public void onLongPress(int primaryCode) {
         if (primaryCode == Keyboard.KEYCODE_DELETE) {
             InputConnection ic = getCurrentInputConnection();
             if (ic != null) {
-                // Clear entire text field
                 ic.setComposingText("", 0);
                 ic.deleteSurroundingText(Integer.MAX_VALUE, 0);
             }
         }
     }
 
-    // =========================================================
-    // ENTER KEY (EditorInfo-based)
-    // =========================================================
     private void handleEnter(InputConnection ic) {
         EditorInfo editorInfo = getCurrentInputEditorInfo();
 
@@ -362,28 +287,16 @@ public class BanglaIME extends InputMethodService
             }
         }
 
-        // Default: newline
         ic.commitText("\n", 1);
     }
 
-    // =========================================================
-    // CURSOR CONTROL
-    // =========================================================
     private void handleCursorControl(InputConnection ic) {
         try {
-            // Move cursor to end of text
-            EditorInfo editorInfo = getCurrentInputEditorInfo();
-            if (editorInfo != null) {
-                // Select all as a simple cursor control
-                ic.selectAll();
-            }
+            ic.selectAll();
         } catch (Exception ignored) {
         }
     }
 
-    // =========================================================
-    // SWITCH TO NUMBER MODE
-    // =========================================================
     private void switchToNumberMode() {
         if (keyboardView == null) return;
         isNumberMode = true;
@@ -391,9 +304,6 @@ public class BanglaIME extends InputMethodService
         keyboardView.invalidateAllKeys();
     }
 
-    // =========================================================
-    // SWITCH TO BENGALI MODE
-    // =========================================================
     private void switchToBengaliMode() {
         if (keyboardView == null) return;
         isNumberMode = false;
@@ -401,9 +311,6 @@ public class BanglaIME extends InputMethodService
         keyboardView.invalidateAllKeys();
     }
 
-    // =========================================================
-    // KEYBOARD PICKER
-    // =========================================================
     private void showKeyboardPicker() {
         InputMethodManager imm =
                 (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -412,9 +319,6 @@ public class BanglaIME extends InputMethodService
         }
     }
 
-    // =========================================================
-    // VOICE INPUT (kept as-is from original)
-    // =========================================================
     private void startVoiceInput() {
 
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
@@ -546,18 +450,17 @@ public class BanglaIME extends InputMethodService
         }
     }
 
-    // =========================================================
-    // VOICE BUTTON TEXT
-    // =========================================================
     private void setVoiceButtonText(final String text) {
         if (voiceButton != null) {
-            voiceButton.post(() -> voiceButton.setText(text));
+            voiceButton.post(new Runnable() {
+                @Override
+                public void run() {
+                    voiceButton.setText(text);
+                }
+            });
         }
     }
 
-    // =========================================================
-    // STOP VOICE INPUT
-    // =========================================================
     private void stopVoiceInput() {
         isListening = false;
         if (speechRecognizer != null) {
@@ -571,9 +474,6 @@ public class BanglaIME extends InputMethodService
         }
     }
 
-    // =========================================================
-    // ON TEXT
-    // =========================================================
     @Override
     public void onText(CharSequence text) {
         InputConnection ic = getCurrentInputConnection();
@@ -582,18 +482,12 @@ public class BanglaIME extends InputMethodService
         }
     }
 
-    // =========================================================
-    // DESTROY
-    // =========================================================
     @Override
     public void onDestroy() {
         stopVoiceInput();
         super.onDestroy();
     }
 
-    // =========================================================
-    // UNUSED METHODS
-    // =========================================================
     @Override public void swipeLeft() { }
     @Override public void swipeRight() { }
     @Override public void swipeDown() { }
