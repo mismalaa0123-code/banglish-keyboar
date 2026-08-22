@@ -9,16 +9,16 @@
 
     <Row android:rowEdgeFlags="top">
 
-        <Key android:codes="2534" android:keyLabel="১" />
-        <Key android:codes="2535" android:keyLabel="২" />
-        <Key android:codes="2536" android:keyLabel="৩" />
-        <Key android:codes="2537" android:keyLabel="৪" />
-        <Key android:codes="2538" android:keyLabel="৫" />
-        <Key android:codes="2539" android:keyLabel="৬" />
-        <Key android:codes="2540" android:keyLabel="৭" />
-        <Key android:codes="2541" android:keyLabel="৮" />
-        <Key android:codes="2542" android:keyLabel="৯" />
-        <Key android:codes="2543" android:keyLabel="০" />
+        <Key android:codes="2534" android:keyLabel="&#2534;" />
+        <Key android:codes="2535" android:keyLabel="&#2535;" />
+        <Key android:codes="2536" android:keyLabel="&#2536;" />
+        <Key android:codes="2537" android:keyLabel="&#2537;" />
+        <Key android:codes="2538" android:keyLabel="&#2538;" />
+        <Key android:codes="2539" android:keyLabel="&#2539;" />
+        <Key android:codes="2540" android:keyLabel="&#2540;" />
+        <Key android:codes="2541" android:keyLabel="&#2541;" />
+        <Key android:codes="2542" android:keyLabel="&#2542;" />
+        <Key android:codes="2543" android:keyLabel="&#2543;" />
 
     </Row>
 
@@ -54,18 +54,18 @@
 
     <Row>
 
-        <Key android:codes="2433" android:keyLabel="ঁ" />
-        <Key android:codes="2434" android:keyLabel="ং" />
-        <Key android:codes="2435" android:keyLabel="ঃ" />
-        <Key android:codes="2492" android:keyLabel="্" />
-        <Key android:codes="2531" android:keyLabel="&#2531;" />
-        <Key android:codes="2501" android:keyLabel="ৎ" />
-        <Key android:codes="2502" android:keyLabel="ঽ" />
-        <Key android:codes="2511" android:keyLabel="৻" />
+        <Key android:codes="2433" android:keyLabel="&#2433;" />
+        <Key android:codes="2434" android:keyLabel="&#2434;" />
+        <Key android:codes="2435" android:keyLabel="&#2435;" />
+        <Key android:codes="2492" android:keyLabel="&#2492;" />
+        <Key android:codes="2501" android:keyLabel="&#2501;" />
+        <Key android:codes="2502" android:keyLabel="&#2502;" />
+        <Key android:codes="2511" android:keyLabel="&#2511;" />
         <Key android:codes="46"   android:keyLabel="." />
+        <Key android:codes="33"   android:keyLabel="!" />
         <Key
             android:codes="-5"
-            android:keyLabel="⌫"
+            android:keyLabel="&#9003;"
             android:isRepeatable="false" />
 
     </Row>
@@ -95,17 +95,17 @@
 
         <Key
             android:codes="10"
-            android:keyLabel="↵"
+            android:keyLabel="&#8629;"
             android:keyWidth="13.63%p" />
 
         <Key
             android:codes="-201"
-            android:keyLabel="😀"
+            android:keyLabel="&#128512;"
             android:keyWidth="13.63%p" />
 
         <Key
             android:codes="-100"
-            android:keyLabel="🌐"
+            android:keyLabel="&#127760;"
             android:keyWidth="13.63%p" />
 
     </Row>
