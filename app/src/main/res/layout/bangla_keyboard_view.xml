@@ -1,127 +1,185 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#FFF8F4">
+    android:orientation="vertical"
+    android:background="#F4F6F8"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
 
+    <!-- TOP TOOLBAR -->
     <LinearLayout
         android:id="@+id/bangla_toolbar"
         android:layout_width="match_parent"
-        android:layout_height="40dp"
+        android:layout_height="42dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="6dp"
-        android:paddingEnd="6dp"
-        android:background="#FFF8F4">
+        android:paddingEnd="6dp">
 
-        <Button
-            android:id="@+id/bangla_menu_button"
+        <ImageButton
+            android:id="@+id/menuButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="&#8862;"
-            android:textSize="14sp"
             android:background="@android:color/transparent"
-            android:textColor="#888888"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
-            android:padding="0dp" />
+            android:contentDescription="Menu"
+            android:src="@android:drawable/ic_menu_more" />
 
-        <Button
-            android:id="@+id/bangla_emoji_button"
+        <ImageButton
+            android:id="@+id/emojiToolbarButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="&#128512;"
-            android:textSize="14sp"
             android:background="@android:color/transparent"
-            android:textColor="#888888"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
-            android:padding="0dp" />
+            android:contentDescription="Emoji"
+            android:src="@android:drawable/ic_menu_emoticons" />
 
-        <Button
-            android:id="@+id/bangla_clipboard_button"
+        <ImageButton
+            android:id="@+id/clipboardButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="&#128203;"
-            android:textSize="14sp"
             android:background="@android:color/transparent"
-            android:textColor="#888888"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
-            android:padding="0dp" />
+            android:contentDescription="Clipboard"
+            android:src="@android:drawable/ic_menu_copy" />
 
-        <Button
-            android:id="@+id/bangla_gif_button"
+        <ImageButton
+            android:id="@+id/settingsButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="GIF"
-            android:textSize="11sp"
             android:background="@android:color/transparent"
-            android:textColor="#888888"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
-            android:padding="0dp" />
+            android:contentDescription="Settings"
+            android:src="@android:drawable/ic_menu_preferences" />
 
-        <Button
-            android:id="@+id/bangla_settings_button"
+        <ImageButton
+            android:id="@+id/translateButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="&#9881;"
-            android:textSize="14sp"
             android:background="@android:color/transparent"
-            android:textColor="#888888"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
-            android:padding="0dp" />
+            android:contentDescription="Translate"
+            android:src="@android:drawable/ic_menu_search" />
 
-        <Button
-            android:id="@+id/bangla_voice_button"
+        <ImageButton
+            android:id="@+id/micButton"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="&#127908;"
-            android:textSize="14sp"
             android:background="@android:color/transparent"
-            android:textColor="#888888"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
-            android:padding="0dp" />
+            android:contentDescription="Voice input"
+            android:src="@android:drawable/ic_btn_speak_now" />
 
     </LinearLayout>
 
-    <android.inputmethodservice.KeyboardView
-        android:id="@+id/bangla_keyboard_view"
+    <!-- BENGALI KEYBOARD -->
+    <com.arafatakaid.banglishkeyboard.BanglaKeyboardView
+        android:id="@+id/banglaKeyboard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
-        android:background="#FFF8F4"
-        android:keyBackground="@drawable/keyboard_key_background"
-        android:keyTextColor="#333333"
-        android:keyTextSize="18sp"
-        android:shadowRadius="0"
-        android:shadowColor="@null" />
+        android:layout_marginStart="3dp"
+        android:layout_marginEnd="3dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="2dp" />
 
+    <!-- BOTTOM CONTROL BAR -->
     <LinearLayout
-        android:id="@+id/bangla_emoji_panel"
+        android:id="@+id/bottomControlBar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="40dp"
-        android:orientation="vertical"
-        android:visibility="gone"
-        android:background="#FFF8F4"
-        android:padding="4dp" />
+        android:layout_height="52dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="3dp"
+        android:paddingEnd="3dp">
 
-    <FrameLayout
-        android:id="@+id/startio_banner_container"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:visibility="gone" />
+        <TextView
+            android:id="@+id/numberButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.1"
+            android:gravity="center"
+            android:text="?১২৩"
+            android:textSize="14sp"
+            android:textColor="#222222"
+            android:background="@drawable/keyboard_key_background"
+            android:clickable="true"
+            android:focusable="true" />
 
-</FrameLayout>
+        <TextView
+            android:id="@+id/emojiButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="😀"
+            android:textSize="22sp"
+            android:background="@drawable/keyboard_key_background"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/globeButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="🌐"
+            android:textSize="20sp"
+            android:background="@drawable/keyboard_key_background"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/spaceButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="4"
+            android:gravity="center"
+            android:text="বাংলা"
+            android:textSize="16sp"
+            android:textColor="#222222"
+            android:background="@drawable/keyboard_key_background"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/cursorButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="↔"
+            android:textSize="20sp"
+            android:background="@drawable/keyboard_key_background"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/punctuationButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="،"
+            android:textSize="20sp"
+            android:background="@drawable/keyboard_key_background"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/enterButton"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.1"
+            android:gravity="center"
+            android:text="↵"
+            android:textSize="22sp"
+            android:background="@drawable/keyboard_key_background"
+            android:clickable="true"
+            android:focusable="true" />
+
+    </LinearLayout>
+
+</LinearLayout>
