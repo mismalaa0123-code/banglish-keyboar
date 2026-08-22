@@ -7,10 +7,6 @@
     android:horizontalGap="1dp"
     android:verticalGap="1dp">
 
-    <!-- ============================================ -->
-    <!-- ROW 0: MATRA / VOWEL SIGNS + HALANT (11 keys) -->
-    <!-- ============================================ -->
-
     <Row android:rowEdgeFlags="top">
 
         <Key android:codes="2494" android:keyLabel="া" />
@@ -27,10 +23,6 @@
 
     </Row>
 
-    <!-- ============================================ -->
-    <!-- ROW 1: স্বরবর্ণ (10 keys) -->
-    <!-- ============================================ -->
-
     <Row>
 
         <Key android:codes="2437" android:keyLabel="অ" />
@@ -45,10 +37,6 @@
         <Key android:codes="2451" android:keyLabel="ও" />
 
     </Row>
-
-    <!-- ============================================ -->
-    <!-- ROW 2: ক-শ্রেণি (10 keys) -->
-    <!-- ============================================ -->
 
     <Row>
 
@@ -65,10 +53,6 @@
 
     </Row>
 
-    <!-- ============================================ -->
-    <!-- ROW 3: ট-শ্রেণি (10 keys) -->
-    <!-- ============================================ -->
-
     <Row>
 
         <Key android:codes="2463" android:keyLabel="ট" />
@@ -83,10 +67,6 @@
         <Key android:codes="2472" android:keyLabel="ন" />
 
     </Row>
-
-    <!-- ============================================ -->
-    <!-- ROW 4: প-শ্রেণি (10 keys) -->
-    <!-- ============================================ -->
 
     <Row>
 
@@ -103,10 +83,6 @@
 
     </Row>
 
-    <!-- ============================================ -->
-    <!-- ROW 5: বাকি অক্ষর + Backspace (10 keys) -->
-    <!-- ============================================ -->
-
     <Row>
 
         <Key android:codes="2488" android:keyLabel="স" />
@@ -114,7 +90,7 @@
         <Key android:codes="2524" android:keyLabel="ড়" />
         <Key android:codes="2525" android:keyLabel="ঢ়" />
         <Key android:codes="2527" android:keyLabel="য়" />
-        <Key android:codes="2531" android:keyLabel="৳" />
+        <Key android:codes="2531" android:keyLabel="&#2531;" />
         <Key android:codes="2501" android:keyLabel="ৎ" />
         <Key android:codes="2502" android:keyLabel="ঽ" />
         <Key android:codes="2511" android:keyLabel="৻" />
@@ -125,50 +101,39 @@
 
     </Row>
 
-    <!-- ============================================ -->
-    <!-- ROW 6: BOTTOM CONTROLS -->
-    <!-- ============================================ -->
-
     <Row android:rowEdgeFlags="bottom">
 
-        <!-- ?123 Number/Symbol mode -->
         <Key
             android:codes="-200"
             android:keyLabel="?১২৩"
             android:keyWidth="13.63%p" />
 
-        <!-- Emoji -->
         <Key
             android:codes="-201"
             android:keyLabel="😀"
             android:keyWidth="13.63%p" />
 
-        <!-- Globe / Language -->
         <Key
             android:codes="-100"
             android:keyLabel="🌐"
             android:keyWidth="13.63%p" />
 
-        <!-- Space (বাংলা) -->
         <Key
             android:codes="32"
             android:keyLabel="বাংলা"
             android:keyWidth="27.27%p"
             android:isRepeatable="true" />
 
-        <!-- Cursor control -->
         <Key
             android:codes="-202"
             android:keyLabel="◀▶"
             android:keyWidth="13.63%p" />
 
-        <!-- Comma -->
         <Key
             android:codes="44"
             android:keyLabel=","
             android:keyWidth="9.09%p" />
 
-        <!-- Enter -->
         <Key
             android:codes="10"
             android:keyLabel="↵"
