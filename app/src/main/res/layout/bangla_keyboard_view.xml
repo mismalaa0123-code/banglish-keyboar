@@ -1,185 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="#F4F6F8"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp">
+    android:background="#F3F4F6">
 
-    <!-- TOP TOOLBAR -->
+    <!-- Top Toolbar -->
     <LinearLayout
-        android:id="@+id/bangla_toolbar"
         android:layout_width="match_parent"
-        android:layout_height="42dp"
+        android:layout_height="50dp"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="6dp"
-        android:paddingEnd="6dp">
-
-        <ImageButton
-            android:id="@+id/menuButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:contentDescription="Menu"
-            android:src="@android:drawable/ic_menu_more" />
-
-        <ImageButton
-            android:id="@+id/emojiToolbarButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:contentDescription="Emoji"
-            android:src="@android:drawable/ic_menu_emoticons" />
-
-        <ImageButton
-            android:id="@+id/clipboardButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:contentDescription="Clipboard"
-            android:src="@android:drawable/ic_menu_copy" />
-
-        <ImageButton
-            android:id="@+id/settingsButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:contentDescription="Settings"
-            android:src="@android:drawable/ic_menu_preferences" />
-
-        <ImageButton
-            android:id="@+id/translateButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:contentDescription="Translate"
-            android:src="@android:drawable/ic_menu_search" />
-
-        <ImageButton
-            android:id="@+id/micButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:contentDescription="Voice input"
-            android:src="@android:drawable/ic_btn_speak_now" />
-
+        android:gravity="center"
+        android:background="#FFF0F0"
+        android:padding="5dp">
+        <!-- Icons are represented by Buttons for simplicity -->
+        <ImageButton android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:src="@android:drawable/ic_menu_sort_by_size" android:background="?attr/selectableItemBackground"/>
+        <ImageButton android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:src="@android:drawable/ic_menu_emoticons" android:background="?attr/selectableItemBackground"/>
+        <ImageButton android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:src="@android:drawable/ic_menu_edit" android:background="?attr/selectableItemBackground"/>
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="GIF" android:gravity="center" android:textStyle="bold"/>
+        <ImageButton android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:src="@android:drawable/ic_menu_preferences" android:background="?attr/selectableItemBackground"/>
+        <ImageButton android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:src="@android:drawable/ic_menu_mylocation" android:background="?attr/selectableItemBackground"/>
+        <ImageButton android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:src="@android:drawable/ic_btn_speak_now" android:background="?attr/selectableItemBackground"/>
     </LinearLayout>
 
-    <!-- BENGALI KEYBOARD -->
-    <com.arafatakaid.banglishkeyboard.BanglaKeyboardView
-        android:id="@+id/banglaKeyboard"
+    <android.inputmethodservice.KeyboardView
+        android:id="@+id/keyboard_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="3dp"
-        android:layout_marginEnd="3dp"
-        android:layout_marginTop="2dp"
-        android:layout_marginBottom="2dp" />
-
-    <!-- BOTTOM CONTROL BAR -->
-    <LinearLayout
-        android:id="@+id/bottomControlBar"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:paddingStart="3dp"
-        android:paddingEnd="3dp">
-
-        <TextView
-            android:id="@+id/numberButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1.1"
-            android:gravity="center"
-            android:text="?১২৩"
-            android:textSize="14sp"
-            android:textColor="#222222"
-            android:background="@drawable/keyboard_key_background"
-            android:clickable="true"
-            android:focusable="true" />
-
-        <TextView
-            android:id="@+id/emojiButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="😀"
-            android:textSize="22sp"
-            android:background="@drawable/keyboard_key_background"
-            android:clickable="true"
-            android:focusable="true" />
-
-        <TextView
-            android:id="@+id/globeButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="🌐"
-            android:textSize="20sp"
-            android:background="@drawable/keyboard_key_background"
-            android:clickable="true"
-            android:focusable="true" />
-
-        <TextView
-            android:id="@+id/spaceButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="4"
-            android:gravity="center"
-            android:text="বাংলা"
-            android:textSize="16sp"
-            android:textColor="#222222"
-            android:background="@drawable/keyboard_key_background"
-            android:clickable="true"
-            android:focusable="true" />
-
-        <TextView
-            android:id="@+id/cursorButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="↔"
-            android:textSize="20sp"
-            android:background="@drawable/keyboard_key_background"
-            android:clickable="true"
-            android:focusable="true" />
-
-        <TextView
-            android:id="@+id/punctuationButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="،"
-            android:textSize="20sp"
-            android:background="@drawable/keyboard_key_background"
-            android:clickable="true"
-            android:focusable="true" />
-
-        <TextView
-            android:id="@+id/enterButton"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1.1"
-            android:gravity="center"
-            android:text="↵"
-            android:textSize="22sp"
-            android:background="@drawable/keyboard_key_background"
-            android:clickable="true"
-            android:focusable="true" />
-
-    </LinearLayout>
-
+        android:keyBackground="@drawable/keyboard_key_background"
+        android:keyTextColor="#000000"
+        android:visibility="visible" />
 </LinearLayout>
