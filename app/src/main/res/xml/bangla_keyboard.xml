@@ -1,269 +1,141 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
-    android:keyWidth="9.6%p"
-    android:keyHeight="44dp"
-    android:horizontalGap="1dp"
-    android:verticalGap="1dp">
+    android:keyWidth="10%p"
+    android:keyHeight="48dp"
+    android:horizontalGap="2dp"
+    android:verticalGap="3dp">
 
-    <!--
-        ROW 1
-        Bengali vowel signs / matras and halant
-        Each key is 8.7% because this row contains 11 keys.
-    -->
-    <Row android:rowEdgeFlags="top">
-
+    <!-- Row 1: Bengali vowel signs + Halant -->
+    <Row>
         <Key
             android:codes="2494"
-            android:keyLabel="&#2494;"
-            android:keyWidth="8.7%p" />
+            android:keyLabel="া"
+            android:keyWidth="9.09%p" />
 
         <Key
             android:codes="2495"
-            android:keyLabel="&#2495;"
-            android:keyWidth="8.7%p" />
+            android:keyLabel="ি"
+            android:keyWidth="9.09%p" />
 
         <Key
             android:codes="2496"
-            android:keyLabel="&#2496;"
-            android:keyWidth="8.7%p" />
+            android:keyLabel="ী"
+            android:keyWidth="9.09%p" />
 
         <Key
             android:codes="2497"
-            android:keyLabel="&#2497;"
-            android:keyWidth="8.7%p" />
+            android:keyLabel="ু"
+            android:keyWidth="9.09%p" />
 
         <Key
             android:codes="2498"
-            android:keyLabel="&#2498;"
-            android:keyWidth="8.7%p" />
+            android:keyLabel="ূ"
+            android:keyWidth="9.09%p" />
 
         <Key
             android:codes="2499"
-            android:keyLabel="&#2499;"
-            android:keyWidth="8.7%p" />
+            android:keyLabel="ৃ"
+            android:keyWidth="9.09%p" />
 
         <Key
             android:codes="2503"
-            android:keyLabel="&#2503;"
-            android:keyWidth="8.7%p" />
-
-        <Key
-            android:codes="2504"
-            android:keyLabel="&#2504;"
-            android:keyWidth="8.7%p" />
-
-        <Key
-            android:codes="2507"
-            android:keyLabel="&#2507;"
-            android:keyWidth="8.7%p" />
+            android:keyLabel="ে"
+            android:keyWidth="9.09%p" />
 
         <Key
             android:codes="2508"
-            android:keyLabel="&#2508;"
-            android:keyWidth="8.7%p" />
+            android:keyLabel="ৈ"
+            android:keyWidth="9.09%p" />
 
-        <!-- Bengali halant/virama: U+09CD = 2509 -->
+        <Key
+            android:codes="2507"
+            android:keyLabel="ো"
+            android:keyWidth="9.09%p" />
+
         <Key
             android:codes="2509"
-            android:keyLabel="&#2509;"
-            android:keyWidth="8.7%p" />
+            android:keyLabel="ৌ"
+            android:keyWidth="9.09%p" />
 
+        <Key
+            android:codes="2509"
+            android:keyLabel="্"
+            android:keyWidth="9.09%p" />
     </Row>
 
-    <!--
-        ROW 2
-        Bengali independent vowels
-    -->
+    <!-- Row 2: Vowels -->
     <Row>
-
-        <Key
-            android:codes="2437"
-            android:keyLabel="&#2437;"
-            android:keyWidth="8.7%p" />
-
-        <Key
-            android:codes="2438"
-            android:keyLabel="&#2438;"
-            android:keyWidth="8.7%p" />
-
-        <Key
-            android:codes="2439"
-            android:keyLabel="&#2439;"
-            android:keyWidth="8.7%p" />
-
-        <Key
-            android:codes="2440"
-            android:keyLabel="&#2440;"
-            android:keyWidth="8.7%p" />
-
-        <Key
-            android:codes="2441"
-            android:keyLabel="&#2441;"
-            android:keyWidth="8.7%p" />
-
-        <Key
-            android:codes="2442"
-            android:keyLabel="&#2442;"
-            android:keyWidth="8.7%p" />
-
-        <Key
-            android:codes="2443"
-            android:keyLabel="&#2443;"
-            android:keyWidth="8.7%p" />
-
-        <Key
-            android:codes="2447"
-            android:keyLabel="&#2447;"
-            android:keyWidth="8.7%p" />
-
-        <Key
-            android:codes="2448"
-            android:keyLabel="&#2448;"
-            android:keyWidth="8.7%p" />
-
-        <Key
-            android:codes="2451"
-            android:keyLabel="&#2451;"
-            android:keyWidth="8.7%p" />
-
-        <!-- Bengali letter AU: U+0994 = 2452 -->
-        <Key
-            android:codes="2452"
-            android:keyLabel="&#2452;"
-            android:keyWidth="8.7%p" />
-
+        <Key android:codes="2438" android:keyLabel="অ" />
+        <Key android:codes="2439" android:keyLabel="আ" />
+        <Key android:codes="2440" android:keyLabel="ই" />
+        <Key android:codes="2441" android:keyLabel="ঈ" />
+        <Key android:codes="2442" android:keyLabel="উ" />
+        <Key android:codes="2443" android:keyLabel="ঊ" />
+        <Key android:codes="2444" android:keyLabel="ঋ" />
+        <Key android:codes="2447" android:keyLabel="এ" />
+        <Key android:codes="2448" android:keyLabel="ঐ" />
+        <Key android:codes="2451" android:keyLabel="ও" />
+        <Key android:codes="2452" android:keyLabel="ঔ" />
     </Row>
 
-    <!--
-        ROW 3
-        ক খ গ ঘ ঙ চ ছ জ ঝ ঞ
-    -->
+    <!-- Row 3 -->
     <Row>
-
-        <Key android:codes="2453" android:keyLabel="&#2453;" />
-        <Key android:codes="2454" android:keyLabel="&#2454;" />
-        <Key android:codes="2455" android:keyLabel="&#2455;" />
-        <Key android:codes="2456" android:keyLabel="&#2456;" />
-        <Key android:codes="2457" android:keyLabel="&#2457;" />
-        <Key android:codes="2458" android:keyLabel="&#2458;" />
-        <Key android:codes="2459" android:keyLabel="&#2459;" />
-        <Key android:codes="2460" android:keyLabel="&#2460;" />
-        <Key android:codes="2461" android:keyLabel="&#2461;" />
-        <Key android:codes="2462" android:keyLabel="&#2462;" />
-
+        <Key android:codes="2458" android:keyLabel="ক" />
+        <Key android:codes="2459" android:keyLabel="খ" />
+        <Key android:codes="2460" android:keyLabel="গ" />
+        <Key android:codes="2461" android:keyLabel="ঘ" />
+        <Key android:codes="2462" android:keyLabel="ঙ" />
+        <Key android:codes="2463" android:keyLabel="চ" />
+        <Key android:codes="2464" android:keyLabel="ছ" />
+        <Key android:codes="2465" android:keyLabel="জ" />
+        <Key android:codes="2466" android:keyLabel="ঝ" />
+        <Key android:codes="2467" android:keyLabel="ঞ" />
+        <Key android:codes="2470" android:keyLabel="ট" />
     </Row>
 
-    <!--
-        ROW 4
-        ট ঠ ড ঢ ণ ত থ দ ধ ন
-    -->
+    <!-- Row 4 -->
     <Row>
-
-        <Key android:codes="2463" android:keyLabel="&#2463;" />
-        <Key android:codes="2464" android:keyLabel="&#2464;" />
-        <Key android:codes="2465" android:keyLabel="&#2465;" />
-        <Key android:codes="2466" android:keyLabel="&#2466;" />
-        <Key android:codes="2467" android:keyLabel="&#2467;" />
-        <Key android:codes="2468" android:keyLabel="&#2468;" />
-        <Key android:codes="2469" android:keyLabel="&#2469;" />
-        <Key android:codes="2470" android:keyLabel="&#2470;" />
-        <Key android:codes="2471" android:keyLabel="&#2471;" />
-        <Key android:codes="2472" android:keyLabel="&#2472;" />
-
+        <Key android:codes="2471" android:keyLabel="ঠ" />
+        <Key android:codes="2472" android:keyLabel="ড" />
+        <Key android:codes="2473" android:keyLabel="ঢ" />
+        <Key android:codes="2474" android:keyLabel="ণ" />
+        <Key android:codes="2475" android:keyLabel="ত" />
+        <Key android:codes="2476" android:keyLabel="থ" />
+        <Key android:codes="2477" android:keyLabel="দ" />
+        <Key android:codes="2478" android:keyLabel="ধ" />
+        <Key android:codes="2479" android:keyLabel="ন" />
+        <Key android:codes="2480" android:keyLabel="প" />
+        <Key android:codes="2481" android:keyLabel="ফ" />
     </Row>
 
-    <!--
-        ROW 5
-        প ফ ব ভ ম য র ল শ ষ
-    -->
+    <!-- Row 5 -->
     <Row>
-
-        <Key android:codes="2474" android:keyLabel="&#2474;" />
-        <Key android:codes="2475" android:keyLabel="&#2475;" />
-        <Key android:codes="2476" android:keyLabel="&#2476;" />
-        <Key android:codes="2477" android:keyLabel="&#2477;" />
-        <Key android:codes="2478" android:keyLabel="&#2478;" />
-        <Key android:codes="2479" android:keyLabel="&#2479;" />
-        <Key android:codes="2480" android:keyLabel="&#2480;" />
-        <Key android:codes="2482" android:keyLabel="&#2482;" />
-        <Key android:codes="2486" android:keyLabel="&#2486;" />
-        <Key android:codes="2487" android:keyLabel="&#2487;" />
-
+        <Key android:codes="2482" android:keyLabel="ব" />
+        <Key android:codes="2483" android:keyLabel="ভ" />
+        <Key android:codes="2484" android:keyLabel="ম" />
+        <Key android:codes="2486" android:keyLabel="য" />
+        <Key android:codes="2487" android:keyLabel="র" />
+        <Key android:codes="2488" android:keyLabel="ল" />
+        <Key android:codes="2489" android:keyLabel="শ" />
+        <Key android:codes="2490" android:keyLabel="ষ" />
+        <Key android:codes="2491" android:keyLabel="স" />
+        <Key android:codes="2492" android:keyLabel="হ" />
+        <Key android:codes="2527" android:keyLabel="য়" />
     </Row>
 
-    <!--
-        ROW 6
-        Remaining common Bengali characters and Backspace
-    -->
+    <!-- Row 6: Additional Bengali letters -->
     <Row>
-
-        <Key android:codes="2488" android:keyLabel="&#2488;" />
-        <Key android:codes="2489" android:keyLabel="&#2489;" />
-        <Key android:codes="2524" android:keyLabel="&#2524;" />
-        <Key android:codes="2525" android:keyLabel="&#2525;" />
-        <Key android:codes="2527" android:keyLabel="&#2527;" />
-        <Key android:codes="2434" android:keyLabel="&#2434;" />
-        <Key android:codes="2435" android:keyLabel="&#2435;" />
-        <Key android:codes="2433" android:keyLabel="&#2433;" />
-
-        <!-- Bengali letter Khanda Ta: U+09CE = 2510 -->
-        <Key
-            android:codes="2510"
-            android:keyLabel="&#2510;" />
-
-        <Key
-            android:codes="-5"
-            android:keyLabel="&#9003;"
-            android:isRepeatable="false" />
-
-    </Row>
-
-    <!--
-        BOTTOM CONTROL ROW
-        Width total: 100%
-    -->
-    <Row android:rowEdgeFlags="bottom">
-
-        <!-- Escaped question mark prevents attr/123 resource error -->
-        <Key
-            android:codes="-200"
-            android:keyLabel="\?&#2535;&#2536;&#2537;"
-            android:keyWidth="12%p" />
-
-        <Key
-            android:codes="-201"
-            android:keyLabel="&#128512;"
-            android:keyWidth="10%p" />
-
-        <Key
-            android:codes="-100"
-            android:keyLabel="&#127760;"
-            android:keyWidth="10%p" />
-
-        <!-- বাংলা = ব + া + ং + ল + া -->
-        <Key
-            android:codes="32"
-            android:keyLabel="&#2476;&#2494;&#2434;&#2482;&#2494;"
-            android:keyWidth="32%p"
-            android:isRepeatable="false" />
-
-        <Key
-            android:codes="-202"
-            android:keyLabel="&#9664;&#9654;"
-            android:keyWidth="12%p" />
-
-        <Key
-            android:codes="44"
-            android:keyLabel=","
-            android:keyWidth="10%p" />
-
-        <!-- Keyboard.KEYCODE_DONE = -4 -->
-        <Key
-            android:codes="-4"
-            android:keyLabel="&#8629;"
-            android:keyWidth="14%p" />
-
+        <Key android:codes="2524" android:keyLabel="ড়" />
+        <Key android:codes="2525" android:keyLabel="ঢ়" />
+        <Key android:codes="2433" android:keyLabel="ং" />
+        <Key android:codes="2434" android:keyLabel="ঃ" />
+        <Key android:codes="2432" android:keyLabel="ঁ" />
+        <Key android:codes="2485" android:keyLabel="য" />
+        <Key android:codes="2510" android:keyLabel="ৎ" />
+        <Key android:codes="2500" android:keyLabel="ৠ" />
+        <Key android:codes="2501" android:keyLabel="ৡ" />
+        <Key android:codes="2554" android:keyLabel="্র" />
+        <Key android:codes="2551" android:keyLabel="্য" />
     </Row>
 
 </Keyboard>
