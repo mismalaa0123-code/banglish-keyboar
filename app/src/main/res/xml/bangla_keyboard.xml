@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-
-<Keyboard
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
     android:keyWidth="10%p"
-    android:keyHeight="44dp"
+    android:keyHeight="42dp"
     android:horizontalGap="1dp"
-    android:verticalGap="1dp">
+    android:verticalGap="2dp">
 
-    <Row android:rowEdgeFlags="top">
-
+    <!-- Row 1: Matra + Halant -->
+    <Row>
         <Key android:codes="2494" android:keyLabel="া" />
         <Key android:codes="2495" android:keyLabel="ি" />
         <Key android:codes="2496" android:keyLabel="ী" />
@@ -19,27 +17,11 @@
         <Key android:codes="2504" android:keyLabel="ৈ" />
         <Key android:codes="2507" android:keyLabel="ো" />
         <Key android:codes="2508" android:keyLabel="ৌ" />
-        <Key android:codes="2492" android:keyLabel="্" />
-
+        <Key android:codes="2509" android:keyLabel="্" />
     </Row>
 
+    <!-- Row 2: ক-ঞ -->
     <Row>
-
-        <Key android:codes="2437" android:keyLabel="অ" />
-        <Key android:codes="2438" android:keyLabel="আ" />
-        <Key android:codes="2439" android:keyLabel="ই" />
-        <Key android:codes="2440" android:keyLabel="ঈ" />
-        <Key android:codes="2441" android:keyLabel="উ" />
-        <Key android:codes="2442" android:keyLabel="ঊ" />
-        <Key android:codes="2443" android:keyLabel="ঋ" />
-        <Key android:codes="2447" android:keyLabel="এ" />
-        <Key android:codes="2448" android:keyLabel="ঐ" />
-        <Key android:codes="2451" android:keyLabel="ও" />
-
-    </Row>
-
-    <Row>
-
         <Key android:codes="2453" android:keyLabel="ক" />
         <Key android:codes="2454" android:keyLabel="খ" />
         <Key android:codes="2455" android:keyLabel="গ" />
@@ -50,11 +32,10 @@
         <Key android:codes="2460" android:keyLabel="জ" />
         <Key android:codes="2461" android:keyLabel="ঝ" />
         <Key android:codes="2462" android:keyLabel="ঞ" />
-
     </Row>
 
+    <!-- Row 3: ট-ন -->
     <Row>
-
         <Key android:codes="2463" android:keyLabel="ট" />
         <Key android:codes="2464" android:keyLabel="ঠ" />
         <Key android:codes="2465" android:keyLabel="ড" />
@@ -65,11 +46,10 @@
         <Key android:codes="2470" android:keyLabel="দ" />
         <Key android:codes="2471" android:keyLabel="ধ" />
         <Key android:codes="2472" android:keyLabel="ন" />
-
     </Row>
 
+    <!-- Row 4: প-ষ -->
     <Row>
-
         <Key android:codes="2474" android:keyLabel="প" />
         <Key android:codes="2475" android:keyLabel="ফ" />
         <Key android:codes="2476" android:keyLabel="ব" />
@@ -80,65 +60,30 @@
         <Key android:codes="2482" android:keyLabel="ল" />
         <Key android:codes="2486" android:keyLabel="শ" />
         <Key android:codes="2487" android:keyLabel="ষ" />
-
     </Row>
 
+    <!-- Row 5: স-য় -->
     <Row>
-
         <Key android:codes="2488" android:keyLabel="স" />
         <Key android:codes="2489" android:keyLabel="হ" />
-        <Key android:codes="2524" android:keyLabel="ড়" />
-        <Key android:codes="2525" android:keyLabel="ঢ়" />
-        <Key android:codes="2527" android:keyLabel="য়" />
-        <Key android:codes="2531" android:keyLabel="&#2531;" />
-        <Key android:codes="2501" android:keyLabel="ৎ" />
-        <Key android:codes="2502" android:keyLabel="ঽ" />
-        <Key android:codes="2511" android:keyLabel="৻" />
-        <Key
-            android:codes="-5"
-            android:keyLabel="⌫"
-            android:isRepeatable="false" />
-
+        <Key android:codes="2524" android:keyLabel="ড়" />
+        <Key android:codes="2525" android:keyLabel="ঢ়" />
+        <Key android:codes="2527" android:keyLabel="য়" />
+        <Key android:codes="2433" android:keyLabel="ঁ" />
+        <Key android:codes="2434" android:keyLabel="ং" />
+        <Key android:codes="2435" android:keyLabel="ঃ" />
+        <Key android:codes="2404" android:keyLabel="।" />
+        <Key android:codes="2405" android:keyLabel="॥" />
     </Row>
 
+    <!-- Row 6: Bottom Controls -->
     <Row android:rowEdgeFlags="bottom">
-
-        <Key
-            android:codes="-200"
-            android:keyLabel="?১২৩"
-            android:keyWidth="13.63%p" />
-
-        <Key
-            android:codes="-201"
-            android:keyLabel="😀"
-            android:keyWidth="13.63%p" />
-
-        <Key
-            android:codes="-100"
-            android:keyLabel="🌐"
-            android:keyWidth="13.63%p" />
-
-        <Key
-            android:codes="32"
-            android:keyLabel="বাংলা"
-            android:keyWidth="27.27%p"
-            android:isRepeatable="true" />
-
-        <Key
-            android:codes="-202"
-            android:keyLabel="◀▶"
-            android:keyWidth="13.63%p" />
-
-        <Key
-            android:codes="44"
-            android:keyLabel=","
-            android:keyWidth="9.09%p" />
-
-        <Key
-            android:codes="10"
-            android:keyLabel="↵"
-            android:keyWidth="13.63%p" />
-
+        <Key android:codes="-2"  android:keyLabel="?১২৩" android:keyWidth="13%p" />
+        <Key android:codes="-101" android:keyLabel="😀"   android:keyWidth="10%p" />
+        <Key android:codes="-100" android:keyLabel="🌐"   android:keyWidth="10%p" />
+        <Key android:codes="32"  android:keyLabel="বাংলা" android:keyWidth="34%p" />
+        <Key android:codes="-5"  android:keyLabel="⌫"    android:keyWidth="13%p" />
+        <Key android:codes="10"  android:keyLabel="↵"    android:keyWidth="13%p" />
     </Row>
 
 </Keyboard>
