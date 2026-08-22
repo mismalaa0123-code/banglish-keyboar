@@ -5,9 +5,6 @@
     android:layout_height="wrap_content"
     android:background="#FFF8F4">
 
-    <!-- ================================ -->
-    <!-- TOP TOOLBAR -->
-    <!-- ================================ -->
     <LinearLayout
         android:id="@+id/bangla_toolbar"
         android:layout_width="match_parent"
@@ -98,9 +95,6 @@
 
     </LinearLayout>
 
-    <!-- ================================ -->
-    <!-- KEYBOARD VIEW (Bangla / Number) -->
-    <!-- ================================ -->
     <android.inputmethodservice.KeyboardView
         android:id="@+id/bangla_keyboard_view"
         android:layout_width="match_parent"
@@ -111,12 +105,8 @@
         android:keyTextColor="#333333"
         android:keyTextSize="18sp"
         android:shadowRadius="0"
-        android:shadowColor="@null"
-        android:stripedBackground="@null" />
+        android:shadowColor="@null" />
 
-    <!-- ================================ -->
-    <!-- EMOJI PANEL (hidden by default) -->
-    <!-- ================================ -->
     <LinearLayout
         android:id="@+id/bangla_emoji_panel"
         android:layout_width="match_parent"
@@ -125,15 +115,8 @@
         android:orientation="vertical"
         android:visibility="gone"
         android:background="#FFF8F4"
-        android:padding="4dp">
+        android:padding="4dp" />
 
-        <!-- Emoji rows added programmatically in BanglaIME.java -->
-
-    </LinearLayout>
-
-    <!-- ================================ -->
-    <!-- START.IO BANNER CONTAINER -->
-    <!-- ================================ -->
     <FrameLayout
         android:id="@+id/startio_banner_container"
         android:layout_width="match_parent"
