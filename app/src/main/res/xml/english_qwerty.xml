@@ -3,12 +3,11 @@
 <Keyboard
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:keyWidth="10%p"
-    android:keyHeight="55dp"
-    android:horizontalGap="0dp"
-    android:verticalGap="4dp">
+    android:keyHeight="43dp"
+    android:horizontalGap="1px"
+    android:verticalGap="1px">
 
     <!-- প্রথম সারি: Q W E R T Y U I O P -->
-
     <Row android:rowEdgeFlags="top">
 
         <Key
@@ -63,9 +62,7 @@
 
     </Row>
 
-
     <!-- দ্বিতীয় সারি: A S D F G H J K L -->
-
     <Row>
 
         <Key
@@ -115,9 +112,7 @@
 
     </Row>
 
-
     <!-- তৃতীয় সারি: Shift Z X C V B N M Backspace -->
-
     <Row>
 
         <Key
@@ -130,49 +125,60 @@
         <Key
             android:codes="122"
             android:keyLabel="z"
-            android:keyWidth="11%p" />
+            android:keyWidth="10.85%p" />
 
         <Key
             android:codes="120"
             android:keyLabel="x"
-            android:keyWidth="11%p" />
+            android:keyWidth="10.85%p" />
 
         <Key
             android:codes="99"
             android:keyLabel="c"
-            android:keyWidth="11%p" />
+            android:keyWidth="10.85%p" />
 
         <Key
             android:codes="118"
             android:keyLabel="v"
-            android:keyWidth="11%p" />
+            android:keyWidth="10.85%p" />
 
         <Key
             android:codes="98"
             android:keyLabel="b"
-            android:keyWidth="11%p" />
+            android:keyWidth="10.85%p" />
 
         <Key
             android:codes="110"
             android:keyLabel="n"
-            android:keyWidth="11%p" />
+            android:keyWidth="10.85%p" />
 
         <Key
             android:codes="109"
             android:keyLabel="m"
-            android:keyWidth="11%p" />
+            android:keyWidth="10.85%p" />
 
         <Key
             android:codes="-5"
             android:keyLabel="⌫"
-            android:keyWidth="12%p" />
+            android:keyWidth="12%p"
+            android:isRepeatable="true" />
 
     </Row>
 
+    <!-- Bottom row: Number / Emoji / Globe / Space / Comma / Enter -->
+    <Row
+        android:rowEdgeFlags="bottom"
+        android:keyHeight="44dp">
 
-    <!-- চতুর্থ সারি: Globe / comma / Space / period / Enter -->
+        <Key
+            android:codes="-200"
+            android:keyLabel="&#63;123"
+            android:keyWidth="14%p" />
 
-    <Row android:rowEdgeFlags="bottom">
+        <Key
+            android:codes="-201"
+            android:keyLabel="😀"
+            android:keyWidth="12%p" />
 
         <Key
             android:codes="-100"
@@ -180,25 +186,20 @@
             android:keyWidth="12%p" />
 
         <Key
-            android:codes="44"
-            android:keyLabel=","
-            android:keyWidth="10%p" />
-
-        <Key
             android:codes="32"
-            android:keyLabel="space"
-            android:keyWidth="48%p"
+            android:keyLabel="English"
+            android:keyWidth="42%p"
             android:isRepeatable="true" />
 
         <Key
-            android:codes="46"
-            android:keyLabel="."
-            android:keyWidth="10%p" />
+            android:codes="44"
+            android:keyLabel=","
+            android:keyWidth="8%p" />
 
         <Key
             android:codes="10"
             android:keyLabel="↵"
-            android:keyWidth="20%p" />
+            android:keyWidth="12%p" />
 
     </Row>
 
