@@ -22,8 +22,21 @@ public class EnglishIME extends InputMethodService
         implements KeyboardView.OnKeyboardActionListener {
 
     private static final int KEYCODE_GLOBE = -100;
-    private static final int KEYCODE_SYMBOLS = -101;
-    private static final int KEYCODE_EMOJI = -102;
+
+    /*
+     * Number/Symbol button:
+     * -2   = Android standard Keyboard.KEYCODE_MODE_CHANGE
+     * -101 = old custom code support
+     */
+    private static final int KEYCODE_SYMBOLS_OLD = -101;
+
+    /*
+     * Emoji button:
+     * -10  = new emoji code
+     * -102 = old custom code support
+     */
+    private static final int KEYCODE_EMOJI_NEW = -10;
+    private static final int KEYCODE_EMOJI_OLD = -102;
 
     private KeyboardView keyboardView;
     private Keyboard englishKeyboard;
@@ -224,11 +237,21 @@ public class EnglishIME extends InputMethodService
                     ic.commitText("\n", 1);
                     break;
 
-                case KEYCODE_SYMBOLS:
+                /*
+                 * Number/Symbol button fix:
+                 * Supports both -2 and -101
+                 */
+                case Keyboard.KEYCODE_MODE_CHANGE:
+                case KEYCODE_SYMBOLS_OLD:
                     showNumberSymbolPanel();
                     break;
 
-                case KEYCODE_EMOJI:
+                /*
+                 * Emoji button fix:
+                 * Supports both -10 and -102
+                 */
+                case KEYCODE_EMOJI_NEW:
+                case KEYCODE_EMOJI_OLD:
                     showEmojiPanel();
                     break;
 
@@ -365,7 +388,7 @@ public class EnglishIME extends InputMethodService
                     panelScroll,
                     new LinearLayout.LayoutParams(
                             ViewGroup.LayoutParams.MATCH_PARENT,
-                            dp(205)
+                            dp(220)
                     )
             );
 
@@ -425,7 +448,7 @@ public class EnglishIME extends InputMethodService
                         row,
                         new LinearLayout.LayoutParams(
                                 ViewGroup.LayoutParams.MATCH_PARENT,
-                                dp(40)
+                                dp(42)
                         )
                 );
 
@@ -440,7 +463,7 @@ public class EnglishIME extends InputMethodService
                         key.setTextColor(0xFF111111);
                         key.setGravity(Gravity.CENTER);
                         key.setTextSize(
-                                "ABC".equals(value) || "⌫".equals(value) ? 14 : 20
+                                "ABC".equals(value) || "⌫".equals(value) ? 15 : 21
                         );
                         key.setPadding(
                                 dp(2),
@@ -465,7 +488,7 @@ public class EnglishIME extends InputMethodService
                         LinearLayout.LayoutParams keyParams =
                                 new LinearLayout.LayoutParams(
                                         0,
-                                        dp(36),
+                                        dp(38),
                                         1f
                                 );
 
@@ -488,7 +511,7 @@ public class EnglishIME extends InputMethodService
                                 empty,
                                 new LinearLayout.LayoutParams(
                                         0,
-                                        dp(36),
+                                        dp(38),
                                         1f
                                 )
                         );
