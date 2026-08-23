@@ -2,8 +2,8 @@
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
     android:keyWidth="10%p"
     android:horizontalGap="2px"
-    android:verticalGap="3px"
-    android:keyHeight="42dp">
+    android:verticalGap="2px"
+    android:keyHeight="38dp">
 
     <!-- Row 1: ১১টি কার/হসন্ত রো -->
     <Row>
@@ -91,7 +91,7 @@
     </Row>
 
     <!-- Bottom Control Row -->
-    <Row android:keyHeight="46dp">
+    <Row android:keyHeight="40dp">
         <Key android:codes="-2" android:keyLabel="\?১২৩" android:keyWidth="12%p" />
         <Key android:codes="-100" android:keyLabel="😀" android:keyWidth="10%p" />
         <Key android:codes="-101" android:keyLabel="🌐" android:keyWidth="9%p" />
