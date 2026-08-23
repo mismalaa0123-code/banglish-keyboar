@@ -172,7 +172,7 @@
 
         <Key
             android:codes="-200"
-            android:keyLabel="&#63;123"
+            android:keyLabel="123"
             android:keyWidth="14%p" />
 
         <Key
