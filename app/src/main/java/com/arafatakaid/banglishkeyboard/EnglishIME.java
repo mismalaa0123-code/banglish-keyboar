@@ -6,625 +6,549 @@ import android.content.Context;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
-import android.os.Build;
-import android.os.Handler;
-import android.view.KeyEvent;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class EnglishIME extends InputMethodService
         implements KeyboardView.OnKeyboardActionListener {
 
-    /*
-     * english_qwerty.xml-এর Custom Key Code
-     */
     private static final int KEYCODE_GLOBE = -100;
-    private static final int KEYCODE_NUMBER = -200;
-    private static final int KEYCODE_EMOJI = -201;
-
-    /*
-     * Emoji key-গুলোর জন্য আলাদা code range।
-     */
-    private static final int EMOJI_CODE_START = -1000;
-
-    /*
-     * Backspace long press সময়।
-     */
-    private static final long BACKSPACE_LONG_PRESS_TIME = 700L;
+    private static final int KEYCODE_SYMBOLS = -101;
+    private static final int KEYCODE_EMOJI = -102;
 
     private KeyboardView keyboardView;
     private Keyboard englishKeyboard;
 
-    private final Handler handler = new Handler();
-
-    private boolean isNumberMode = false;
-    private boolean isEmojiMode = false;
-    private boolean isLongPressDelete = false;
-    private boolean deleteKeyPressed = false;
-
-    private Runnable clearAllRunnable;
-
-    /*
-     * Original keyboard letters সংরক্ষণ করবে,
-     * যাতে Number/Emoji mode থেকে আবার English mode-এ ফেরা যায়।
-     */
-    private final List<Keyboard.Key> letterKeys = new ArrayList<>();
-    private final Map<Keyboard.Key, Integer> originalCodes = new HashMap<>();
-    private final Map<Keyboard.Key, CharSequence> originalLabels = new HashMap<>();
-
-    /*
-     * Emoji code অনুযায়ী কোন emoji insert হবে।
-     */
-    private final Map<Integer, String> emojiMap = new HashMap<>();
+    private LinearLayout rootLayout;
+    private ScrollView panelScroll;
+    private LinearLayout panelContent;
 
     @Override
     public View onCreateInputView() {
 
-        View root = LayoutInflater.from(this).inflate(
-                R.layout.english_keyboard_view,
-                null
-        );
+        View root;
 
-        keyboardView = root.findViewById(
-                R.id.english_keyboard_view
-        );
-
-        /*
-         * Start.io Banner
-         * এই অংশ অপরিবর্তিত রাখা হয়েছে।
-         */
-        FrameLayout bannerContainer = root.findViewById(
-                R.id.startio_banner_container
-        );
-
-        StartIoBannerHelper.attach(
-                this,
-                bannerContainer
-        );
-
-        /*
-         * English Keyboard
-         */
-        englishKeyboard = new Keyboard(
-                this,
-                R.xml.english_qwerty
-        );
-
-        keyboardView.setKeyboard(
-                englishKeyboard
-        );
-
-        keyboardView.setOnKeyboardActionListener(
-                this
-        );
-
-        keyboardView.setPreviewEnabled(
-                false
-        );
-
-        saveOriginalLetterKeys();
-
-        /*
-         * Copy / Paste toolbar button
-         */
-        View copyPasteButton = root.findViewById(
-                R.id.btn_english_copy_paste
-        );
-
-        if (copyPasteButton != null) {
-            copyPasteButton.setOnClickListener(
-                    new View.OnClickListener() {
-                        @Override
-                        public void onClick(View view) {
-                            handleCopyOrPaste();
-                        }
-                    }
+        try {
+            root = LayoutInflater.from(this).inflate(
+                    R.layout.english_keyboard_view,
+                    null
             );
+        } catch (Exception e) {
+            return createFallbackKeyboardView();
         }
+
+        if (root instanceof LinearLayout) {
+            rootLayout = (LinearLayout) root;
+        }
+
+        keyboardView = root.findViewById(R.id.english_keyboard_view);
+
+        if (keyboardView == null) {
+            return createFallbackKeyboardView();
+        }
+
+        // ==========================================
+        // Start.io Banner - untouched but safe
+        // ==========================================
+
+        try {
+            FrameLayout bannerContainer =
+                    root.findViewById(R.id.startio_banner_container);
+
+            if (bannerContainer != null) {
+                StartIoBannerHelper.attach(this, bannerContainer);
+            }
+        } catch (Exception ignored) {
+            // Banner/monetization crash prevent
+        }
+
+        // ==========================================
+        // English Keyboard Setup
+        // ==========================================
+
+        boolean keyboardLoaded = setupKeyboard();
+
+        if (!keyboardLoaded) {
+            Toast.makeText(
+                    this,
+                    "English keyboard layout load failed",
+                    Toast.LENGTH_SHORT
+            ).show();
+        }
+
+        // ==========================================
+        // Copy/Paste Toolbar
+        // ==========================================
+
+        setupCopyPasteButton(root);
+
+        createPanelIfNeeded();
 
         return root;
     }
 
-    /*
-     * English letter key-গুলোর original code এবং label save করবে।
-     */
-    private void saveOriginalLetterKeys() {
+    private View createFallbackKeyboardView() {
 
-        letterKeys.clear();
-        originalCodes.clear();
-        originalLabels.clear();
+        rootLayout = new LinearLayout(this);
+        rootLayout.setOrientation(LinearLayout.VERTICAL);
+        rootLayout.setBackgroundColor(0xFFEAF5E4);
 
-        List<Keyboard.Key> keys = englishKeyboard.getKeys();
+        TextView copyPaste = new TextView(this);
+        copyPaste.setText("📋  Copy/Paste");
+        copyPaste.setGravity(Gravity.CENTER);
+        copyPaste.setTextColor(0xFF111111);
+        copyPaste.setTextSize(13);
+        copyPaste.setBackgroundColor(0xFFFFF1F2);
+        copyPaste.setTypeface(null, android.graphics.Typeface.BOLD);
 
-        for (Keyboard.Key key : keys) {
+        rootLayout.addView(
+                copyPaste,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(42)
+                )
+        );
 
-            if (key.codes == null || key.codes.length == 0) {
-                continue;
+        copyPaste.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                handleCopyPaste();
             }
+        });
 
-            int code = key.codes[0];
+        keyboardView = new KeyboardView(this, null);
+        keyboardView.setBackgroundColor(0xFFEAF5E4);
+        keyboardView.setPreviewEnabled(false);
 
-            if (code >= 'a' && code <= 'z') {
-                letterKeys.add(key);
-                originalCodes.put(key, code);
-                originalLabels.put(key, key.label);
+        rootLayout.addView(
+                keyboardView,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+        );
+
+        setupKeyboard();
+        createPanelIfNeeded();
+
+        return rootLayout;
+    }
+
+    private boolean setupKeyboard() {
+
+        try {
+            englishKeyboard = new Keyboard(
+                    this,
+                    R.xml.english_qwerty
+            );
+
+            keyboardView.setKeyboard(englishKeyboard);
+            keyboardView.setOnKeyboardActionListener(this);
+            keyboardView.setPreviewEnabled(false);
+            keyboardView.setVisibility(View.VISIBLE);
+
+            return true;
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void setupCopyPasteButton(View root) {
+
+        try {
+            int copyPasteId = getResources().getIdentifier(
+                    "btn_english_copy_paste",
+                    "id",
+                    getPackageName()
+            );
+
+            if (copyPasteId != 0) {
+                View copyPasteButton = root.findViewById(copyPasteId);
+
+                if (copyPasteButton != null) {
+                    copyPasteButton.setOnClickListener(
+                            new View.OnClickListener() {
+                                @Override
+                                public void onClick(View v) {
+                                    handleCopyPaste();
+                                }
+                            }
+                    );
+                }
             }
+        } catch (Exception ignored) {
+            // If toolbar id missing, keyboard still works
         }
     }
 
     @Override
-    public void onKey(
-            int primaryCode,
-            int[] keyCodes
-    ) {
+    public void onKey(int primaryCode, int[] keyCodes) {
 
-        InputConnection inputConnection =
-                getCurrentInputConnection();
+        InputConnection ic = getCurrentInputConnection();
 
-        if (inputConnection == null) {
+        if (ic == null) {
             return;
         }
 
         try {
+
             switch (primaryCode) {
 
                 case Keyboard.KEYCODE_DELETE:
-
-                    if (!isLongPressDelete) {
-                        inputConnection.deleteSurroundingText(
-                                1,
-                                0
-                        );
-                    }
-
+                    hidePanel();
+                    ic.deleteSurroundingText(1, 0);
                     break;
 
                 case Keyboard.KEYCODE_SHIFT:
+                    hidePanel();
 
-                    /*
-                     * Number অথবা Emoji mode-এ Shift কাজ করবে না।
-                     */
-                    if (!isNumberMode && !isEmojiMode) {
-                        englishKeyboard.setShifted(
-                                !englishKeyboard.isShifted()
-                        );
-
+                    if (englishKeyboard != null && keyboardView != null) {
+                        englishKeyboard.setShifted(!englishKeyboard.isShifted());
                         keyboardView.invalidateAllKeys();
                     }
-
                     break;
 
                 case Keyboard.KEYCODE_DONE:
-
-                    sendEnter(inputConnection);
-
-                    break;
-
                 case 10:
-
-                    sendEnter(inputConnection);
-
+                    hidePanel();
+                    ic.commitText("\n", 1);
                     break;
 
-                case KEYCODE_GLOBE:
-
-                    showKeyboardPicker();
-
-                    break;
-
-                case KEYCODE_NUMBER:
-
-                    toggleNumberMode();
-
+                case KEYCODE_SYMBOLS:
+                    showNumberSymbolPanel();
                     break;
 
                 case KEYCODE_EMOJI:
+                    showEmojiPanel();
+                    break;
 
-                    toggleEmojiMode();
+                case KEYCODE_GLOBE:
+                    hidePanel();
+                    showKeyboardPicker();
+                    break;
 
+                case 32:
+                    hidePanel();
+                    ic.commitText(" ", 1);
                     break;
 
                 default:
+                    hidePanel();
 
-                    /*
-                     * Emoji mode থেকে emoji নির্বাচন।
-                     */
-                    if (emojiMap.containsKey(primaryCode)) {
-                        String emoji = emojiMap.get(primaryCode);
-
-                        if (emoji != null) {
-                            inputConnection.commitText(
-                                    emoji,
-                                    1
-                            );
-                        }
-
-                        return;
-                    }
-
-                    /*
-                     * সাধারণ letter / number / symbol input।
-                     */
-                    if (primaryCode >= 0
-                            && primaryCode <= Character.MAX_VALUE) {
+                    if (primaryCode >= 0 && primaryCode <= Character.MAX_VALUE) {
 
                         char character = (char) primaryCode;
 
-                        if (!isNumberMode
-                                && !isEmojiMode
+                        if (englishKeyboard != null
                                 && englishKeyboard.isShifted()
                                 && Character.isLetter(character)) {
 
-                            character = Character.toUpperCase(
-                                    character
-                            );
+                            character = Character.toUpperCase(character);
                         }
 
-                        inputConnection.commitText(
-                                String.valueOf(character),
-                                1
-                        );
+                        ic.commitText(String.valueOf(character), 1);
 
-                        /*
-                         * একবার Shift দিয়ে letter লেখার পর
-                         * lowercase-এ ফিরে যাবে।
-                         */
-                        if (!isNumberMode
-                                && !isEmojiMode
-                                && englishKeyboard.isShifted()
-                                && Character.isLetter(character)) {
+                        if (englishKeyboard != null
+                                && keyboardView != null
+                                && englishKeyboard.isShifted()) {
 
                             englishKeyboard.setShifted(false);
                             keyboardView.invalidateAllKeys();
                         }
                     }
-
                     break;
             }
 
         } catch (Exception ignored) {
-            /*
-             * Keyboard crash বন্ধ রাখার জন্য।
-             */
+            // Prevent keyboard service crash
         }
     }
 
-    /*
-     * Enter পাঠানো।
-     */
-    private void sendEnter(
-            InputConnection inputConnection
-    ) {
-        try {
-            inputConnection.sendKeyEvent(
-                    new KeyEvent(
-                            KeyEvent.ACTION_DOWN,
-                            KeyEvent.KEYCODE_ENTER
-                    )
-            );
-
-            inputConnection.sendKeyEvent(
-                    new KeyEvent(
-                            KeyEvent.ACTION_UP,
-                            KeyEvent.KEYCODE_ENTER
-                    )
-            );
-
-        } catch (Exception ignored) {
-            inputConnection.commitText("\n", 1);
-        }
-    }
-
-    /*
-     * Number/Symbol mode চালু বা বন্ধ।
-     */
-    private void toggleNumberMode() {
-
-        if (isNumberMode) {
-            restoreEnglishKeys();
-            return;
-        }
-
-        isNumberMode = true;
-        isEmojiMode = false;
-
-        englishKeyboard.setShifted(false);
-
-        /*
-         * 26টি letter key-এর জায়গায় Number/Symbol বসানো হবে।
-         */
-        String[] symbols = {
-                "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
-                "@", "#", "$", "%", "&", "-", "+", "(", ")", "/",
-                "=", "*", "\"", "'", ":", ";"
-        };
-
-        for (int i = 0; i < letterKeys.size(); i++) {
-
-            Keyboard.Key key = letterKeys.get(i);
-
-            if (i < symbols.length) {
-                String symbol = symbols[i];
-
-                key.label = symbol;
-                key.codes[0] = symbol.charAt(0);
-            }
-        }
-
-        keyboardView.invalidateAllKeys();
-    }
-
-    /*
-     * Emoji mode চালু বা বন্ধ।
-     */
-    private void toggleEmojiMode() {
-
-        if (isEmojiMode) {
-            restoreEnglishKeys();
-            return;
-        }
-
-        isEmojiMode = true;
-        isNumberMode = false;
-
-        englishKeyboard.setShifted(false);
-
-        emojiMap.clear();
-
-        String[] emojis = {
-                "😀", "😁", "😂", "🤣", "😊", "😍", "😘", "😎", "😭", "🔥",
-                "👍", "👎", "❤️", "🙏", "🎉", "👏", "🤔", "😢", "😡", "😴",
-                "😇", "🥰", "🤩", "🤗", "😜", "💯"
-        };
-
-        for (int i = 0; i < letterKeys.size(); i++) {
-
-            Keyboard.Key key = letterKeys.get(i);
-
-            if (i < emojis.length) {
-
-                int emojiCode = EMOJI_CODE_START - i;
-
-                key.label = emojis[i];
-                key.codes[0] = emojiCode;
-
-                emojiMap.put(
-                        emojiCode,
-                        emojis[i]
-                );
-            }
-        }
-
-        keyboardView.invalidateAllKeys();
-    }
-
-    /*
-     * Number অথবা Emoji mode থেকে আবার QWERTY English layout ফিরিয়ে আনে।
-     */
-    private void restoreEnglishKeys() {
-
-        isNumberMode = false;
-        isEmojiMode = false;
-
-        emojiMap.clear();
-
-        for (Keyboard.Key key : letterKeys) {
-
-            Integer originalCode = originalCodes.get(key);
-            CharSequence originalLabel = originalLabels.get(key);
-
-            if (originalCode != null) {
-                key.codes[0] = originalCode;
-            }
-
-            key.label = originalLabel;
-        }
-
-        englishKeyboard.setShifted(false);
-
-        keyboardView.invalidateAllKeys();
-    }
-
-    /*
-     * Globe button চাপলে সব keyboard-এর list আসবে।
-     */
-    private void showKeyboardPicker() {
+    private void handleCopyPaste() {
 
         try {
-            InputMethodManager inputMethodManager =
-                    (InputMethodManager) getSystemService(
-                            Context.INPUT_METHOD_SERVICE
-                    );
+            InputConnection ic = getCurrentInputConnection();
 
-            if (inputMethodManager != null) {
-                inputMethodManager.showInputMethodPicker();
+            if (ic == null) {
+                return;
             }
 
-        } catch (Exception ignored) {
-        }
-    }
+            ClipboardManager clipboard =
+                    (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
 
-    /*
-     * Copy/Paste:
-     *
-     * Selected text থাকলে Copy।
-     * Selection না থাকলে Clipboard থেকে Paste।
-     */
-    private void handleCopyOrPaste() {
+            if (clipboard == null) {
+                return;
+            }
 
-        InputConnection inputConnection =
-                getCurrentInputConnection();
+            CharSequence selectedText = ic.getSelectedText(0);
 
-        if (inputConnection == null) {
-            return;
-        }
+            if (selectedText != null && selectedText.length() > 0) {
 
-        ClipboardManager clipboardManager =
-                (ClipboardManager) getSystemService(
-                        Context.CLIPBOARD_SERVICE
+                clipboard.setPrimaryClip(
+                        ClipData.newPlainText(
+                                "english_selected_text",
+                                selectedText
+                        )
                 );
 
-        if (clipboardManager == null) {
-            return;
-        }
-
-        CharSequence selectedText = null;
-
-        try {
-            if (Build.VERSION.SDK_INT
-                    >= Build.VERSION_CODES.LOLLIPOP) {
-
-                selectedText = inputConnection.getSelectedText(0);
+                Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
+                return;
             }
-        } catch (Exception ignored) {
-        }
 
-        /*
-         * Text selected থাকলে Copy করবে।
-         */
-        if (selectedText != null
-                && selectedText.length() > 0) {
-
-            ClipData clipData = ClipData.newPlainText(
-                    "English Keyboard Text",
-                    selectedText
-            );
-
-            clipboardManager.setPrimaryClip(
-                    clipData
-            );
-
-            Toast.makeText(
-                    this,
-                    "Copied",
-                    Toast.LENGTH_SHORT
-            ).show();
-
-            return;
-        }
-
-        /*
-         * Selected text না থাকলে Paste করবে।
-         */
-        try {
-            if (clipboardManager.hasPrimaryClip()
-                    && clipboardManager.getPrimaryClip() != null
-                    && clipboardManager.getPrimaryClip()
-                    .getItemCount() > 0) {
-
-                ClipData.Item item =
-                        clipboardManager.getPrimaryClip()
-                                .getItemAt(0);
+            if (clipboard.hasPrimaryClip()
+                    && clipboard.getPrimaryClip() != null
+                    && clipboard.getPrimaryClip().getItemCount() > 0) {
 
                 CharSequence pasteText =
-                        item.coerceToText(this);
+                        clipboard.getPrimaryClip()
+                                .getItemAt(0)
+                                .coerceToText(this);
 
-                if (pasteText != null
-                        && pasteText.length() > 0) {
-
-                    inputConnection.commitText(
-                            pasteText,
-                            1
-                    );
-
-                    Toast.makeText(
-                            this,
-                            "Pasted",
-                            Toast.LENGTH_SHORT
-                    ).show();
+                if (pasteText != null && pasteText.length() > 0) {
+                    ic.commitText(pasteText, 1);
+                } else {
+                    Toast.makeText(this, "Nothing to paste", Toast.LENGTH_SHORT).show();
                 }
 
             } else {
-                Toast.makeText(
-                        this,
-                        "Clipboard is empty",
-                        Toast.LENGTH_SHORT
-                ).show();
+                Toast.makeText(this, "Clipboard empty", Toast.LENGTH_SHORT).show();
             }
 
         } catch (Exception ignored) {
-            Toast.makeText(
-                    this,
-                    "Paste failed",
-                    Toast.LENGTH_SHORT
-            ).show();
+            // Safe clipboard handling
         }
     }
 
-    /*
-     * Backspace চেপে ধরলে সম্পূর্ণ current text clear করবে।
-     */
-    private void clearAllText() {
+    private void createPanelIfNeeded() {
 
-        InputConnection inputConnection =
-                getCurrentInputConnection();
+        try {
+            if (rootLayout == null) {
+                return;
+            }
 
-        if (inputConnection == null) {
+            if (panelScroll != null) {
+                return;
+            }
+
+            panelScroll = new ScrollView(this);
+            panelScroll.setBackgroundColor(0xFFEAF5E4);
+            panelScroll.setVisibility(View.GONE);
+
+            panelContent = new LinearLayout(this);
+            panelContent.setOrientation(LinearLayout.VERTICAL);
+            panelContent.setPadding(
+                    dp(5),
+                    dp(5),
+                    dp(5),
+                    dp(5)
+            );
+
+            panelScroll.addView(
+                    panelContent,
+                    new ScrollView.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+            );
+
+            rootLayout.addView(
+                    panelScroll,
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            dp(205)
+                    )
+            );
+
+        } catch (Exception ignored) {
+            // Prevent panel creation crash
+        }
+    }
+
+    private void showNumberSymbolPanel() {
+
+        String[] symbols = new String[]{
+                "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
+                "@", "#", "$", "%", "&", "-", "+", "(", ")", "/",
+                "=", "*", "\"", "'", ":", ";", "!", "?", ".", ",",
+                "ABC", "⌫"
+        };
+
+        showPanel(symbols, 10);
+    }
+
+    private void showEmojiPanel() {
+
+        String[] emojis = new String[]{
+                "😀", "😃", "😄", "😁", "😆", "😅", "😂",
+                "🤣", "😊", "🙂", "😉", "😍", "😘", "😎",
+                "🤔", "🙄", "😐", "😢", "😭", "😡", "😴",
+                "👍", "👎", "🙏", "👏", "❤️", "🔥", "🎉",
+                "🌹", "💯", "✅", "❌", "⭐", "✨", "💔",
+                "ABC", "⌫"
+        };
+
+        showPanel(emojis, 7);
+    }
+
+    private void showPanel(String[] items, int columns) {
+
+        try {
+            createPanelIfNeeded();
+
+            if (panelScroll == null || panelContent == null || keyboardView == null) {
+                return;
+            }
+
+            keyboardView.setVisibility(View.GONE);
+            panelScroll.setVisibility(View.VISIBLE);
+
+            panelContent.removeAllViews();
+
+            int index = 0;
+
+            while (index < items.length) {
+
+                LinearLayout row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+
+                panelContent.addView(
+                        row,
+                        new LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                dp(40)
+                        )
+                );
+
+                for (int i = 0; i < columns; i++) {
+
+                    if (index < items.length) {
+
+                        final String value = items[index];
+
+                        TextView key = new TextView(this);
+                        key.setText(value);
+                        key.setTextColor(0xFF111111);
+                        key.setGravity(Gravity.CENTER);
+                        key.setTextSize(
+                                "ABC".equals(value) || "⌫".equals(value) ? 14 : 20
+                        );
+                        key.setPadding(
+                                dp(2),
+                                dp(2),
+                                dp(2),
+                                dp(2)
+                        );
+
+                        try {
+                            key.setBackgroundResource(R.drawable.keyboard_key_background);
+                        } catch (Exception ignored) {
+                            key.setBackgroundColor(0xFFFFFFFF);
+                        }
+
+                        key.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                handlePanelKey(value);
+                            }
+                        });
+
+                        LinearLayout.LayoutParams keyParams =
+                                new LinearLayout.LayoutParams(
+                                        0,
+                                        dp(36),
+                                        1f
+                                );
+
+                        keyParams.setMargins(
+                                dp(2),
+                                dp(2),
+                                dp(2),
+                                dp(2)
+                        );
+
+                        row.addView(key, keyParams);
+
+                        index++;
+
+                    } else {
+
+                        View empty = new View(this);
+
+                        row.addView(
+                                empty,
+                                new LinearLayout.LayoutParams(
+                                        0,
+                                        dp(36),
+                                        1f
+                                )
+                        );
+                    }
+                }
+            }
+
+        } catch (Exception ignored) {
+            // Prevent panel crash
+        }
+    }
+
+    private void handlePanelKey(String value) {
+
+        InputConnection ic = getCurrentInputConnection();
+
+        if (ic == null || value == null) {
             return;
         }
 
+        if ("ABC".equals(value)) {
+            hidePanel();
+        } else if ("⌫".equals(value)) {
+            ic.deleteSurroundingText(1, 0);
+        } else {
+            ic.commitText(value, 1);
+        }
+    }
+
+    private void hidePanel() {
+
         try {
-            inputConnection.beginBatchEdit();
+            if (panelScroll != null) {
+                panelScroll.setVisibility(View.GONE);
+            }
 
-            inputConnection.deleteSurroundingText(
-                    100000,
-                    100000
-            );
-
-            inputConnection.endBatchEdit();
-
+            if (keyboardView != null) {
+                keyboardView.setVisibility(View.VISIBLE);
+            }
         } catch (Exception ignored) {
         }
     }
 
-    @Override
-    public void onPress(int primaryCode) {
+    private void showKeyboardPicker() {
 
-        if (primaryCode == Keyboard.KEYCODE_DELETE) {
+        try {
+            InputMethodManager imm =
+                    (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
 
-            deleteKeyPressed = true;
-            isLongPressDelete = false;
-
-            clearAllRunnable = new Runnable() {
-                @Override
-                public void run() {
-
-                    if (deleteKeyPressed) {
-                        isLongPressDelete = true;
-                        clearAllText();
-                    }
-                }
-            };
-
-            handler.postDelayed(
-                    clearAllRunnable,
-                    BACKSPACE_LONG_PRESS_TIME
-            );
+            if (imm != null) {
+                imm.showInputMethodPicker();
+            }
+        } catch (Exception ignored) {
         }
     }
 
-    @Override
-    public void onRelease(int primaryCode) {
+    private int dp(int value) {
 
-        if (primaryCode == Keyboard.KEYCODE_DELETE) {
-
-            deleteKeyPressed = false;
-
-            if (clearAllRunnable != null) {
-                handler.removeCallbacks(
-                        clearAllRunnable
-                );
-            }
-        }
+        float density = getResources().getDisplayMetrics().density;
+        return (int) (value * density + 0.5f);
     }
 
     @Override
@@ -634,15 +558,19 @@ public class EnglishIME extends InputMethodService
             return;
         }
 
-        InputConnection inputConnection =
-                getCurrentInputConnection();
+        InputConnection ic = getCurrentInputConnection();
 
-        if (inputConnection != null) {
-            inputConnection.commitText(
-                    text,
-                    1
-            );
+        if (ic != null) {
+            ic.commitText(text, 1);
         }
+    }
+
+    @Override
+    public void onPress(int primaryCode) {
+    }
+
+    @Override
+    public void onRelease(int primaryCode) {
     }
 
     @Override
@@ -659,17 +587,5 @@ public class EnglishIME extends InputMethodService
 
     @Override
     public void swipeUp() {
-    }
-
-    @Override
-    public void onDestroy() {
-
-        if (clearAllRunnable != null) {
-            handler.removeCallbacks(
-                    clearAllRunnable
-            );
-        }
-
-        super.onDestroy();
     }
 }
