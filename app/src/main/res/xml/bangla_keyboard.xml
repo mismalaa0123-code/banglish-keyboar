@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Keyboard xmlns:android="http://schemas.android.com/apk/res/android"
     android:keyWidth="10%p"
-    android:horizontalGap="1px"
-    android:verticalGap="1px"
+    android:horizontalGap="0px"
+    android:verticalGap="0px"
     android:keyHeight="55dp">
 
-    <!-- Row 1: ১১টি কার/হসন্ত রো -->
+    <!-- Row 1: ১১টি কার/হসন্ত রো (সংশোধিত) -->
     <Row>
         <Key android:codes="2503" android:keyLabel="া" android:keyWidth="9.09%p" />
         <Key android:codes="2495" android:keyLabel="ি" android:keyWidth="9.09%p" />
@@ -92,12 +92,13 @@
 
     <!-- Row 7: Bottom Function Row -->
     <Row android:keyHeight="50dp">
-        <Key android:codes="-2" android:keyLabel="?১২৩" android:keyWidth="12%p" />
-        <Key android:codes="-100" android:keyLabel="😀" android:keyWidth="10%p" />
-        <Key android:codes="-101" android:keyIcon="@android:drawable/ic_menu_set_as" android:keyWidth="8%p" />
+        <!-- \? ব্যবহার করা হয়েছে যাতে AAPT এরর না দেয় -->
+        <Key android:codes="-2" android:keyLabel="\?১২৩" android:keyWidth="12%p" />
+        <Key android:codes="-100" android:keyLabel="😊" android:keyWidth="10%p" />
+        <Key android:codes="-101" android:keyIcon="@android:drawable/ic_menu_agenda" android:keyWidth="8%p" />
         <Key android:codes="32" android:keyLabel="বাংলা" android:keyWidth="38%p" />
         <Key android:codes="-102" android:keyLabel="⇳" android:keyWidth="10%p" />
         <Key android:codes="44" android:keyLabel="," android:keyWidth="10%p" />
-        <Key android:codes="10" android:keyIcon="@android:drawable/ic_menu_send" android:keyWidth="12%p" />
+        <Key android:codes="10" android:keyIcon="@android:drawable/ic_input_add" android:keyWidth="12%p" />
     </Row>
 </Keyboard>
