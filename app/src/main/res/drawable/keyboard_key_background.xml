@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- বাটন চেপে ধরলে যে রকম দেখাবে (Pressed State) -->
     <item android:state_pressed="true">
         <shape android:shape="rectangle">
             <solid android:color="#D1D5DB" />
             <corners android:radius="8dp" />
         </shape>
     </item>
+    
+    <!-- বাটন সাধারণ অবস্থায় যেমন থাকবে (Normal State) -->
     <item>
         <shape android:shape="rectangle">
             <solid android:color="#FFFFFF" />
