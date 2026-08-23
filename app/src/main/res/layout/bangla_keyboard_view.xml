@@ -1,80 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bangla_keyboard_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="#F3F4F6">
+    android:background="#EAF5E4">
 
-    <!-- Top Toolbar: শুধু কপি/পেস্ট এবং ভয়েস ইনপুট -->
+    <!-- Top Toolbar -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="50dp"
+        android:layout_height="48dp"
         android:orientation="horizontal"
-        android:background="#FFF0F0"
+        android:background="#FFF1F2"
         android:gravity="center"
-        android:padding="5dp">
+        android:paddingLeft="6dp"
+        android:paddingRight="6dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp">
 
-        <LinearLayout
+        <!-- Copy/Paste -->
+        <TextView
             android:id="@+id/btn_copy_paste"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:background="?attr/selectableItemBackground"
+            android:background="?android:attr/selectableItemBackground"
             android:gravity="center"
-            android:orientation="horizontal">
-            <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@android:drawable/ic_menu_edit"
-                android:tint="#000000" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="  কপি/পেস্ট"
-                android:textColor="#000000"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+            android:text="📋  কপি/পেস্ট"
+            android:textColor="#111111"
+            android:textSize="14sp"
+            android:textStyle="bold" />
 
+        <!-- Divider -->
         <View
             android:layout_width="1dp"
             android:layout_height="30dp"
-            android:background="#D1D1D1" />
+            android:background="#D1D5DB" />
 
-        <LinearLayout
+        <!-- Voice -->
+        <TextView
             android:id="@+id/btn_voice_input"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:background="?attr/selectableItemBackground"
+            android:background="?android:attr/selectableItemBackground"
             android:gravity="center"
-            android:orientation="horizontal">
-            <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@android:drawable/ic_btn_speak_now"
-                android:tint="#000000" />
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="  ভয়েস ইনপুট"
-                android:textColor="#000000"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+            android:text="🎙  ভয়েস ইনপুট"
+            android:textColor="#111111"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
     </LinearLayout>
 
-    <!-- মূল কিবোর্ড ভিউ -->
+    <!-- Keyboard View -->
     <android.inputmethodservice.KeyboardView
         android:id="@+id/keyboard_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="#EAF5E4"
         android:keyBackground="@drawable/keyboard_key_background"
-        android:keyTextColor="#000000"
-        android:keyTextSize="22sp"
-        android:labelTextSize="16sp"
-        android:paddingTop="2dp"
-        android:paddingBottom="2dp"
+        android:keyTextColor="#111111"
+        android:keyTextSize="20sp"
+        android:labelTextSize="14sp"
+        android:paddingLeft="3dp"
+        android:paddingRight="3dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
         android:shadowColor="#00000000"
         android:shadowRadius="0" />
 
