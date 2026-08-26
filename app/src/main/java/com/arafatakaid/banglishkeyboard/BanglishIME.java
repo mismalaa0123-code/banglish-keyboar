@@ -30,6 +30,7 @@ public class BanglishIME extends InputMethodService
 
     private static final String TAG = "BanglishIME";
 
+    // বাটন কোডসমূহ
     private static final int KEYCODE_MIC = -100;
     private static final int KEYCODE_GLOBE = -101;
     private static final int KEYCODE_SYMBOLS = -102; 
@@ -98,7 +99,7 @@ public class BanglishIME extends InputMethodService
         return root;
     }
 
-    // --- Voice Input Result Handlers (এরর সমাধান করার জন্য এই মেথডগুলো যোগ করা হলো) ---
+    // --- Voice Input Result Handlers (এই মেথডগুলো অবশ্যই থাকতে হবে) ---
     public void handleVoiceResult(String recognizedBangla) {
         mainHandler.post(() -> {
             if (suggestionText != null && recognizedBangla != null) {
@@ -219,7 +220,6 @@ public class BanglishIME extends InputMethodService
         } catch (Exception e) { Log.e(TAG, "Key error", e); }
     }
 
-    // --- Converter Logic (অপরিবর্তিত) ---
     private void convertCurrentText() {
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
@@ -280,14 +280,8 @@ public class BanglishIME extends InputMethodService
         try { VoiceInputHelper.startListening(this, (VoiceInputHelper.VoiceResultListener) this); } catch (Exception ignored) {}
     }
 
-    private static String extractLastBanglaToken(String text) {
-        Matcher matcher = LAST_BANGLA_TOKEN.matcher(text);
-        String last = "";
-        while (matcher.find()) last = matcher.group();
-        return last;
-    }
-
     private static String extractLastBanglaRun(String text) {
+        if (text == null) return "";
         Matcher matcher = LAST_BANGLA_RUN.matcher(text);
         String last = "";
         while (matcher.find()) last = matcher.group();
@@ -314,10 +308,6 @@ public class BanglishIME extends InputMethodService
         return Math.max(0, end - start);
     }
     
-    private boolean isUsableVoiceOrPreviewText(String t) {
-        return t != null && !t.trim().isEmpty() && !t.contains("Listening") && !t.contains("এখানে বাংলা");
-    }
-
     @Override public void onText(CharSequence text) { if (text != null) getCurrentInputConnection().commitText(text, 1); }
     @Override public void onPress(int pc) {}
     @Override public void onRelease(int pc) {}
