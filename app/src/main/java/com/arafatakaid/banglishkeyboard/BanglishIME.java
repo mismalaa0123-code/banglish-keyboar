@@ -25,310 +25,1263 @@ import android.widget.Toast;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-// এখানে VoiceResultListener যোগ করা হয়েছে এরর কাটানোর জন্য
 public class BanglishIME extends InputMethodService
-        implements KeyboardView.OnKeyboardActionListener, VoiceInputHelper.VoiceResultListener {
+        implements KeyboardView.OnKeyboardActionListener {
 
     private static final String TAG = "BanglishIME";
 
+    // আগের voice code
     private static final int KEYCODE_MIC = -100;
+
+    // আগের Globe code
     private static final int KEYCODE_GLOBE = -101;
-    private static final int KEYCODE_SYMBOLS = -102; 
-    private static final int KEYCODE_EMOJI = -103;   
+
+    // শুধু নতুন Number এবং Emoji button
+    private static final int KEYCODE_NUMBER_SYMBOL = -301;
+    private static final int KEYCODE_EMOJI = -302;
+
+    // আগের keyboard controls
     private static final int KEYCODE_DELETE = -5;
     private static final int KEYCODE_SHIFT = -1;
     private static final int KEYCODE_COPY = -201;
     private static final int KEYCODE_PASTE = -202;
 
     private static final String BANGLA_CHAR_CLASS = "\\u0980-\\u09FF";
-    private static final Pattern LAST_BANGLA_TOKEN = Pattern.compile("[" + BANGLA_CHAR_CLASS + "]+");
-    private static final Pattern LAST_BANGLA_RUN = Pattern.compile("[" + BANGLA_CHAR_CLASS + "]+(?:\\s+[" + BANGLA_CHAR_CLASS + "]+)*");
+
+    private static final Pattern LAST_BANGLA_TOKEN =
+            Pattern.compile("[" + BANGLA_CHAR_CLASS + "]+");
+
+    private static final Pattern LAST_BANGLA_RUN =
+            Pattern.compile(
+                    "[" + BANGLA_CHAR_CLASS + "]+(?:\\s+["
+                            + BANGLA_CHAR_CLASS + "]+)*"
+            );
 
     private KeyboardView keyboardView;
     private Keyboard qwertyKeyboard;
     private TextView suggestionText;
-    
+
+    // শুধু Number / Emoji panel-এর জন্য নতুন
     private LinearLayout rootLayout;
     private ScrollView panelScroll;
     private LinearLayout panelContent;
 
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Handler mainHandler =
+            new Handler(Looper.getMainLooper());
 
     @Override
     public void onCreate() {
         super.onCreate();
+
         try {
-            DictionaryHelper.getInstance(this);
-            BanglaToBanglishConverter.loadDictionaryFromAssets(this, "dictionary.json");
+            DictionaryHelper dh =
+                    DictionaryHelper.getInstance(this);
+
+            BanglaToBanglishConverter.loadDictionaryFromAssets(
+                    this,
+                    "dictionary.json"
+            );
+
+            try {
+                Log.d(
+                        TAG,
+                        "Dictionary loaded entries: "
+                                + dh.getWordCount()
+                );
+            } catch (Exception e) {
+                Log.w(
+                        TAG,
+                        "Dictionary count unavailable: "
+                                + e.getMessage()
+                );
+            }
+
         } catch (Exception e) {
-            Log.e(TAG, "Dictionary initialization failed", e);
+            Log.e(
+                    TAG,
+                    "Dictionary initialization failed",
+                    e
+            );
         }
     }
 
     @Override
     public View onCreateInputView() {
-        View root = LayoutInflater.from(this).inflate(R.layout.keyboard_view, null);
+
+        View root = LayoutInflater.from(this)
+                .inflate(R.layout.keyboard_view, null);
+
         if (root instanceof LinearLayout) {
             rootLayout = (LinearLayout) root;
         }
 
-        suggestionText = root.findViewById(R.id.preview_text_view);
-        Button convertButton = root.findViewById(R.id.btn_convert);
-        Button micButton = root.findViewById(R.id.btn_mic);
-        keyboardView = root.findViewById(R.id.keyboard_view);
-        FrameLayout bannerContainer = root.findViewById(R.id.startio_banner_container);
+        suggestionText =
+                root.findViewById(
+                        R.id.preview_text_view
+                );
 
-        StartIoBannerHelper.attach(this, bannerContainer);
+        Button convertButton =
+                root.findViewById(
+                        R.id.btn_convert
+                );
 
-        qwertyKeyboard = new Keyboard(this, R.xml.qwerty);
-        keyboardView.setKeyboard(qwertyKeyboard);
-        keyboardView.setOnKeyboardActionListener(this);
+        Button micButton =
+                root.findViewById(
+                        R.id.btn_mic
+                );
+
+        keyboardView =
+                root.findViewById(
+                        R.id.keyboard_view
+                );
+
+        FrameLayout bannerContainer =
+                root.findViewById(
+                        R.id.startio_banner_container
+                );
+
+        // আগের Start.io Banner
+        StartIoBannerHelper.attach(
+                this,
+                bannerContainer
+        );
+
+        qwertyKeyboard =
+                new Keyboard(
+                        this,
+                        R.xml.qwerty
+                );
+
+        keyboardView.setKeyboard(
+                qwertyKeyboard
+        );
+
+        keyboardView.setOnKeyboardActionListener(
+                this
+        );
+
         keyboardView.setPreviewEnabled(false);
 
-        if (convertButton != null) convertButton.setOnClickListener(v -> convertCurrentText());
-        if (micButton != null) micButton.setOnClickListener(v -> startVoiceInput());
-        
+        if (convertButton != null) {
+            convertButton.setOnClickListener(
+                    v -> convertCurrentText()
+            );
+        }
+
+        if (micButton != null) {
+            micButton.setOnClickListener(
+                    v -> startVoiceInput()
+            );
+        }
+
         if (suggestionText != null) {
+
             suggestionText.setOnClickListener(v -> {
-                String text = suggestionText.getText() != null ? suggestionText.getText().toString().trim() : "";
-                if (isUsableVoiceOrPreviewText(text)) processBanglaText(text, 0);
+
+                String text =
+                        suggestionText.getText() != null
+                                ? suggestionText
+                                .getText()
+                                .toString()
+                                .trim()
+                                : "";
+
+                if (isUsableVoiceOrPreviewText(text)) {
+                    processBanglaText(text, 0);
+                }
             });
         }
 
+        // শুধু Number / Emoji panel-এর জন্য
         createPanelIfNeeded();
+
         return root;
     }
 
-    // --- Voice Input Listeners (নিচে implement করা হলো) ---
-    @Override
-    public void handleVoiceResult(String recognizedBangla) {
+    /*
+     * এই দুইটি method আপনার আগের VoiceInputHelper-এর জন্য দরকার।
+     * এগুলো remove করবেন না।
+     */
+
+    public void handleVoiceResult(
+            String recognizedBangla) {
+
         mainHandler.post(() -> {
-            if (suggestionText != null && recognizedBangla != null) {
-                suggestionText.setText(recognizedBangla);
+
+            if (suggestionText != null &&
+                    recognizedBangla != null) {
+
+                suggestionText.setText(
+                        recognizedBangla
+                );
             }
         });
     }
 
-    @Override
-    public void handleVoicePartialResult(String partialText) {
+    public void handleVoicePartialResult(
+            String partialText) {
+
         mainHandler.post(() -> {
-            if (suggestionText != null && partialText != null) {
-                suggestionText.setText(partialText);
+
+            if (suggestionText != null &&
+                    partialText != null) {
+
+                suggestionText.setText(
+                        partialText
+                );
             }
         });
     }
 
-    // --- Number & Emoji Panel Logic ---
+    private static boolean isUsableVoiceOrPreviewText(
+            String text) {
+
+        if (text == null ||
+                text.trim().isEmpty()) {
+            return false;
+        }
+
+        String t = text.trim();
+
+        return !t.contains("Listening")
+                && !t.contains("এখানে বাংলা")
+                && !t.contains("Voice input");
+    }
+
+    private static String extractLastBanglaToken(
+            String text) {
+
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        Matcher matcher =
+                LAST_BANGLA_TOKEN.matcher(text);
+
+        String last = "";
+
+        while (matcher.find()) {
+            last = matcher.group();
+        }
+
+        return last;
+    }
+
+    private static String extractLastBanglaRun(
+            String text) {
+
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+
+        Matcher matcher =
+                LAST_BANGLA_RUN.matcher(text);
+
+        String last = "";
+
+        while (matcher.find()) {
+            last = matcher.group();
+        }
+
+        return last != null
+                ? last.trim()
+                : "";
+    }
+
+    private static int findLastBanglaRunLength(
+            String text,
+            String run) {
+
+        if (text == null ||
+                run == null ||
+                run.isEmpty()) {
+            return 0;
+        }
+
+        int end = text.length();
+
+        while (end > 0 &&
+                Character.isWhitespace(
+                        text.charAt(end - 1))) {
+            end--;
+        }
+
+        int start = end;
+
+        while (start > 0) {
+
+            char c =
+                    text.charAt(start - 1);
+
+            if (isBanglaChar(c)) {
+
+                start--;
+
+            } else if (Character.isWhitespace(c)) {
+
+                int j = start - 1;
+
+                while (j >= 0 &&
+                        Character.isWhitespace(
+                                text.charAt(j))) {
+                    j--;
+                }
+
+                if (j >= 0 &&
+                        isBanglaChar(
+                                text.charAt(j))) {
+
+                    start = j + 1;
+
+                    while (start > 0 &&
+                            isBanglaChar(
+                                    text.charAt(
+                                            start - 1))) {
+                        start--;
+                    }
+
+                } else {
+                    break;
+                }
+
+            } else {
+                break;
+            }
+        }
+
+        return Math.max(
+                0,
+                end - start
+        );
+    }
+
+    private static boolean isBanglaChar(
+            char c) {
+
+        return c >= '\u0980'
+                && c <= '\u09FF';
+    }
+
+    private void convertCurrentText() {
+
+        InputConnection ic =
+                getCurrentInputConnection();
+
+        if (ic == null) {
+            showToast(
+                    "Input connection পাওয়া যায়নি"
+            );
+            return;
+        }
+
+        CharSequence before =
+                ic.getTextBeforeCursor(
+                        1000,
+                        0
+                );
+
+        if (before != null &&
+                before.length() > 0) {
+
+            String fullBefore =
+                    before.toString();
+
+            String lastRun =
+                    extractLastBanglaRun(
+                            fullBefore
+                    );
+
+            if (!lastRun.isEmpty()) {
+
+                int runLength =
+                        findLastBanglaRunLength(
+                                fullBefore,
+                                lastRun
+                        );
+
+                if (runLength > 0) {
+
+                    processBanglaText(
+                            lastRun,
+                            runLength
+                    );
+
+                    return;
+                }
+            }
+
+            String lastToken =
+                    extractLastBanglaToken(
+                            fullBefore
+                    );
+
+            if (!lastToken.isEmpty()) {
+
+                processBanglaText(
+                        lastToken,
+                        lastToken.length()
+                );
+
+                return;
+            }
+
+            showToast(
+                    "কার্সরের আগে কোনো বাংলা লেখা পাওয়া যায়নি"
+            );
+
+            return;
+        }
+
+        if (suggestionText != null) {
+
+            String voiceText =
+                    suggestionText.getText() != null
+                            ? suggestionText
+                            .getText()
+                            .toString()
+                            .trim()
+                            : "";
+
+            if (isUsableVoiceOrPreviewText(
+                    voiceText)) {
+
+                processBanglaText(
+                        voiceText,
+                        0
+                );
+
+                return;
+            }
+        }
+
+        showToast(
+                "কোনো বাংলা text পাওয়া যায়নি"
+        );
+    }
+
+    private void processBanglaText(
+            String banglaText,
+            int banglaLength) {
+
+        String cleanText =
+                banglaText != null
+                        ? banglaText.trim()
+                        : "";
+
+        if (cleanText.isEmpty()) {
+            return;
+        }
+
+        String banglishResult = null;
+
+        try {
+
+            banglishResult =
+                    DictionaryHelper
+                            .getInstance(this)
+                            .lookup(cleanText);
+
+        } catch (Exception e) {
+
+            Log.w(
+                    TAG,
+                    "Dictionary lookup failed; using converter",
+                    e
+            );
+        }
+
+        if (banglishResult == null ||
+                banglishResult.trim().isEmpty()) {
+
+            try {
+
+                banglishResult =
+                        BanglaToBanglishConverter
+                                .convert(cleanText);
+
+            } catch (Exception e) {
+
+                Log.e(
+                        TAG,
+                        "Converter failed for: "
+                                + cleanText,
+                        e
+                );
+
+                banglishResult =
+                        cleanText;
+            }
+        }
+
+        if (banglishResult == null ||
+                banglishResult.trim().isEmpty()) {
+
+            banglishResult =
+                    cleanText;
+        }
+
+        commitBanglish(
+                banglishResult,
+                banglaLength
+        );
+    }
+
+    private void commitBanglish(
+            String banglishText,
+            int banglaLength) {
+
+        if (banglishText == null) {
+            return;
+        }
+
+        InputConnection ic =
+                getCurrentInputConnection();
+
+        if (ic == null) {
+            return;
+        }
+
+        String result =
+                banglishText.trim();
+
+        if (result.isEmpty()) {
+            return;
+        }
+
+        if (banglaLength > 0) {
+
+            try {
+
+                ic.deleteSurroundingText(
+                        banglaLength,
+                        0
+                );
+
+            } catch (Exception e) {
+
+                Log.w(
+                        TAG,
+                        "deleteSurroundingText failed",
+                        e
+                );
+
+                return;
+            }
+        }
+
+        try {
+
+            ic.commitText(
+                    result + " ",
+                    1
+            );
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "commitText failed",
+                    e
+            );
+
+            return;
+        }
+
+        if (suggestionText != null) {
+
+            suggestionText.setText(
+                    "এখানে বাংলা দেখা যাবে..."
+            );
+        }
+    }
+
+    private void showToast(
+            String message) {
+
+        try {
+
+            Toast.makeText(
+                    this,
+                    message,
+                    Toast.LENGTH_SHORT
+            ).show();
+
+        } catch (Exception e) {
+
+            Log.w(
+                    TAG,
+                    "Toast failed",
+                    e
+            );
+        }
+    }
+
+    @Override
+    public void onKey(
+            int primaryCode,
+            int[] keyCodes) {
+
+        InputConnection ic =
+                getCurrentInputConnection();
+
+        if (ic == null) {
+            return;
+        }
+
+        try {
+
+            switch (primaryCode) {
+
+                // নতুন Number / Symbol panel
+                case KEYCODE_NUMBER_SYMBOL:
+
+                    showNumberSymbolPanel();
+
+                    break;
+
+                // নতুন Emoji panel
+                case KEYCODE_EMOJI:
+
+                    showEmojiPanel();
+
+                    break;
+
+                // আগের Voice
+                case KEYCODE_MIC:
+
+                    startVoiceInput();
+
+                    break;
+
+                // আগের Globe
+                case KEYCODE_GLOBE:
+
+                    showKeyboardPicker();
+
+                    break;
+
+                // আগের Backspace
+                case KEYCODE_DELETE:
+
+                    ic.deleteSurroundingText(
+                            1,
+                            0
+                    );
+
+                    break;
+
+                // আগের Copy
+                case KEYCODE_COPY:
+
+                    copySelectedText(ic);
+
+                    break;
+
+                // আগের Paste
+                case KEYCODE_PASTE:
+
+                    pasteClipboard(ic);
+
+                    break;
+
+                // আগের Shift
+                case KEYCODE_SHIFT:
+
+                    if (qwertyKeyboard != null) {
+
+                        qwertyKeyboard.setShifted(
+                                !qwertyKeyboard.isShifted()
+                        );
+
+                        if (keyboardView != null) {
+
+                            keyboardView
+                                    .invalidateAllKeys();
+                        }
+                    }
+
+                    break;
+
+                // আগের Enter
+                case 10:
+
+                    ic.commitText(
+                            "\n",
+                            1
+                    );
+
+                    break;
+
+                default:
+
+                    if (primaryCode >= 0 &&
+                            primaryCode <=
+                                    Character.MAX_VALUE) {
+
+                        char character =
+                                (char) primaryCode;
+
+                        if (qwertyKeyboard != null &&
+                                qwertyKeyboard.isShifted() &&
+                                Character.isLetter(
+                                        character)) {
+
+                            character =
+                                    Character.toUpperCase(
+                                            character
+                                    );
+
+                            qwertyKeyboard
+                                    .setShifted(false);
+
+                            if (keyboardView != null) {
+                                keyboardView
+                                        .invalidateAllKeys();
+                            }
+                        }
+
+                        ic.commitText(
+                                String.valueOf(
+                                        character
+                                ),
+                                1
+                        );
+                    }
+
+                    break;
+            }
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Keyboard key handling failed: "
+                            + primaryCode,
+                    e
+            );
+        }
+    }
+
+    private void showKeyboardPicker() {
+
+        try {
+
+            InputMethodManager imm =
+                    (InputMethodManager)
+                            getSystemService(
+                                    Context.INPUT_METHOD_SERVICE
+                            );
+
+            if (imm != null) {
+
+                imm.showInputMethodPicker();
+            }
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Could not show keyboard picker",
+                    e
+            );
+        }
+    }
+
+    private void copySelectedText(
+            InputConnection ic) {
+
+        try {
+
+            CharSequence selected =
+                    ic.getSelectedText(0);
+
+            if (selected == null ||
+                    selected.length() == 0) {
+
+                showToast(
+                        "আগে text select করুন"
+                );
+
+                return;
+            }
+
+            ClipboardManager clipboard =
+                    (ClipboardManager)
+                            getSystemService(
+                                    CLIPBOARD_SERVICE
+                            );
+
+            if (clipboard == null) {
+                return;
+            }
+
+            ClipData clip =
+                    ClipData.newPlainText(
+                            "Banglish Keyboard",
+                            selected
+                    );
+
+            clipboard.setPrimaryClip(clip);
+
+            showToast("Copied");
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Copy failed",
+                    e
+            );
+        }
+    }
+
+    private void pasteClipboard(
+            InputConnection ic) {
+
+        try {
+
+            ClipboardManager clipboard =
+                    (ClipboardManager)
+                            getSystemService(
+                                    CLIPBOARD_SERVICE
+                            );
+
+            if (clipboard == null ||
+                    !clipboard.hasPrimaryClip()) {
+
+                showToast(
+                        "Clipboard খালি"
+                );
+
+                return;
+            }
+
+            ClipData clip =
+                    clipboard.getPrimaryClip();
+
+            if (clip == null ||
+                    clip.getItemCount() == 0) {
+
+                showToast(
+                        "Clipboard খালি"
+                );
+
+                return;
+            }
+
+            ClipData.Item item =
+                    clip.getItemAt(0);
+
+            CharSequence pasteText =
+                    item != null
+                            ? item.coerceToText(this)
+                            : null;
+
+            if (pasteText != null &&
+                    pasteText.length() > 0) {
+
+                ic.commitText(
+                        pasteText,
+                        1
+                );
+            }
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Paste failed",
+                    e
+            );
+        }
+    }
+
+    private void startVoiceInput() {
+
+        if (suggestionText != null) {
+
+            suggestionText.setText(
+                    "🎤 Listening... বলুন..."
+            );
+        }
+
+        showToast(
+                "Voice input shuru hocche..."
+        );
+
+        try {
+
+            /*
+             * আপনার original code-এর মতোই রাখা হয়েছে।
+             * এখানে VoiceResultListener বা অন্য interface নেই।
+             */
+            VoiceInputHelper.startListening(
+                    this,
+                    this
+            );
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Voice input failed",
+                    e
+            );
+
+            if (suggestionText != null) {
+
+                suggestionText.setText(
+                        "Voice input চালু করা যায়নি"
+                );
+            }
+        }
+    }
+
+    /*
+     * Number / Emoji Panel
+     * এগুলো শুধুই নতুন যোগ হয়েছে।
+     */
+
     private void createPanelIfNeeded() {
-        if (rootLayout == null || panelScroll != null) return;
-        panelScroll = new ScrollView(this);
-        panelScroll.setBackgroundColor(0xFFE2E5E9);
-        panelScroll.setVisibility(View.GONE);
-        panelContent = new LinearLayout(this);
-        panelContent.setOrientation(LinearLayout.VERTICAL);
-        panelContent.setPadding(dp(5), dp(5), dp(5), dp(5));
-        panelScroll.addView(panelContent, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        rootLayout.addView(panelScroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(200)));
+
+        if (rootLayout == null ||
+                panelScroll != null) {
+            return;
+        }
+
+        panelScroll =
+                new ScrollView(this);
+
+        panelScroll.setBackgroundColor(
+                0xFFE2E5E9
+        );
+
+        panelScroll.setVisibility(
+                View.GONE
+        );
+
+        panelContent =
+                new LinearLayout(this);
+
+        panelContent.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        panelContent.setPadding(
+                dp(5),
+                dp(5),
+                dp(5),
+                dp(5)
+        );
+
+        panelScroll.addView(
+                panelContent,
+                new ScrollView.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+        );
+
+        rootLayout.addView(
+                panelScroll,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(220)
+                )
+        );
     }
 
     private void showNumberSymbolPanel() {
-        String[] symbols = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "@", "#", "$", "%", "&", "-", "+", "(", ")", "/", "*", "\"", "'", ":", ";", "!", "?", ".", ",", "ABC", "⌫"};
-        showPanel(symbols, 8);
+
+        String[] symbols = new String[]{
+                "1", "2", "3", "4", "5",
+                "6", "7", "8", "9", "0",
+
+                "@", "#", "$", "%", "&",
+                "-", "+", "(", ")", "/",
+
+                "=", "*", "\"", "'", ":",
+                ";", "!", "?", ".", ",",
+
+                "ABC", "⌫"
+        };
+
+        showPanel(
+                symbols,
+                10
+        );
     }
 
     private void showEmojiPanel() {
-        String[] emojis = {"😀", "😂", "😍", "😘", "😎", "😭", "👍", "❤️", "🔥", "🙏", "👏", "🎉", "🤔", "😢", "🌟", "💯", "ABC", "⌫"};
-        showPanel(emojis, 7);
+
+        String[] emojis = new String[]{
+                "😀", "😃", "😄", "😁", "😆", "😅", "😂",
+                "🤣", "😊", "🙂", "😉", "😍", "😘", "😎",
+                "🤔", "🙄", "😐", "😢", "😭", "😡", "😴",
+                "👍", "👎", "🙏", "👏", "❤️", "🔥", "🎉",
+                "🌹", "💯", "✅", "❌", "⭐", "✨", "💔",
+                "ABC", "⌫"
+        };
+
+        showPanel(
+                emojis,
+                7
+        );
     }
 
-    private void showPanel(String[] items, int columns) {
-        if (panelScroll == null || keyboardView == null) return;
-        keyboardView.setVisibility(View.GONE);
-        panelScroll.setVisibility(View.VISIBLE);
+    private void showPanel(
+            String[] items,
+            int columns) {
+
+        createPanelIfNeeded();
+
+        if (panelScroll == null ||
+                panelContent == null ||
+                keyboardView == null) {
+            return;
+        }
+
+        keyboardView.setVisibility(
+                View.GONE
+        );
+
+        panelScroll.setVisibility(
+                View.VISIBLE
+        );
+
         panelContent.removeAllViews();
+
         int index = 0;
+
         while (index < items.length) {
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            panelContent.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(45)));
+
+            LinearLayout row =
+                    new LinearLayout(this);
+
+            row.setOrientation(
+                    LinearLayout.HORIZONTAL
+            );
+
+            panelContent.addView(
+                    row,
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            dp(42)
+                    )
+            );
+
             for (int i = 0; i < columns; i++) {
+
                 if (index < items.length) {
-                    final String val = items[index++];
-                    TextView key = new TextView(this);
-                    key.setText(val);
-                    key.setGravity(Gravity.CENTER);
-                    key.setTextColor(0xFF202124);
-                    key.setTextSize(val.length() > 1 ? 14 : 20);
-                    key.setBackgroundResource(R.drawable.keyboard_key_background);
-                    key.setOnClickListener(v -> {
-                        if ("ABC".equals(val)) hidePanel();
-                        else if ("⌫".equals(val)) getCurrentInputConnection().deleteSurroundingText(1, 0);
-                        else getCurrentInputConnection().commitText(val, 1);
-                    });
-                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(40), 1f);
-                    lp.setMargins(dp(2), dp(2), dp(2), dp(2));
-                    row.addView(key, lp);
+
+                    final String value =
+                            items[index];
+
+                    TextView key =
+                            new TextView(this);
+
+                    key.setText(value);
+
+                    key.setGravity(
+                            Gravity.CENTER
+                    );
+
+                    key.setTextColor(
+                            0xFF202124
+                    );
+
+                    if ("ABC".equals(value) ||
+                            "⌫".equals(value)) {
+
+                        key.setTextSize(14);
+
+                    } else {
+
+                        key.setTextSize(20);
+                    }
+
+                    key.setPadding(
+                            dp(2),
+                            dp(2),
+                            dp(2),
+                            dp(2)
+                    );
+
+                    key.setBackgroundResource(
+                            R.drawable.keyboard_key_background
+                    );
+
+                    key.setOnClickListener(
+                            v -> handlePanelKey(value)
+                    );
+
+                    LinearLayout.LayoutParams params =
+                            new LinearLayout.LayoutParams(
+                                    0,
+                                    dp(38),
+                                    1f
+                            );
+
+                    params.setMargins(
+                            dp(2),
+                            dp(2),
+                            dp(2),
+                            dp(2)
+                    );
+
+                    row.addView(
+                            key,
+                            params
+                    );
+
+                    index++;
+
                 } else {
-                    row.addView(new View(this), new LinearLayout.LayoutParams(0, dp(40), 1f));
+
+                    View empty =
+                            new View(this);
+
+                    row.addView(
+                            empty,
+                            new LinearLayout.LayoutParams(
+                                    0,
+                                    dp(38),
+                                    1f
+                            )
+                    );
                 }
             }
         }
     }
 
-    private void hidePanel() {
-        if (panelScroll != null) panelScroll.setVisibility(View.GONE);
-        if (keyboardView != null) keyboardView.setVisibility(View.VISIBLE);
+    private void handlePanelKey(
+            String value) {
+
+        InputConnection ic =
+                getCurrentInputConnection();
+
+        if (ic == null ||
+                value == null) {
+            return;
+        }
+
+        try {
+
+            if ("ABC".equals(value)) {
+
+                hidePanel();
+
+            } else if ("⌫".equals(value)) {
+
+                ic.deleteSurroundingText(
+                        1,
+                        0
+                );
+
+            } else {
+
+                ic.commitText(
+                        value,
+                        1
+                );
+            }
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Panel key failed: " + value,
+                    e
+            );
+        }
     }
 
-    private int dp(int v) {
-        return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
+    private void hidePanel() {
+
+        if (panelScroll != null) {
+
+            panelScroll.setVisibility(
+                    View.GONE
+            );
+        }
+
+        if (keyboardView != null) {
+
+            keyboardView.setVisibility(
+                    View.VISIBLE
+            );
+        }
+    }
+
+    private int dp(
+            int value) {
+
+        float density =
+                getResources()
+                        .getDisplayMetrics()
+                        .density;
+
+        return (int) (
+                value * density + 0.5f
+        );
     }
 
     @Override
-    public void onKey(int primaryCode, int[] keyCodes) {
-        InputConnection ic = getCurrentInputConnection();
-        if (ic == null) return;
+    public void onText(
+            CharSequence text) {
+
+        if (text == null ||
+                text.length() == 0) {
+            return;
+        }
+
+        InputConnection ic =
+                getCurrentInputConnection();
+
+        if (ic == null) {
+            return;
+        }
+
         try {
-            switch (primaryCode) {
-                case KEYCODE_SYMBOLS: showNumberSymbolPanel(); break;
-                case KEYCODE_EMOJI: showEmojiPanel(); break;
-                case KEYCODE_MIC: startVoiceInput(); break;
-                case KEYCODE_GLOBE: hidePanel(); showKeyboardPicker(); break;
-                case KEYCODE_DELETE: hidePanel(); ic.deleteSurroundingText(1, 0); break;
-                case KEYCODE_COPY: copySelectedText(ic); break;
-                case KEYCODE_PASTE: pasteClipboard(ic); break;
-                case KEYCODE_SHIFT:
-                    hidePanel();
-                    if (qwertyKeyboard != null) {
-                        qwertyKeyboard.setShifted(!qwertyKeyboard.isShifted());
-                        if (keyboardView != null) keyboardView.invalidateAllKeys();
-                    }
-                    break;
-                case 10: hidePanel(); ic.commitText("\n", 1); break;
-                case 32: hidePanel(); ic.commitText(" ", 1); break;
-                default:
-                    hidePanel();
-                    if (primaryCode >= 0 && primaryCode <= Character.MAX_VALUE) {
-                        char character = (char) primaryCode;
-                        if (qwertyKeyboard != null && qwertyKeyboard.isShifted() && Character.isLetter(character)) {
-                            character = Character.toUpperCase(character);
-                            qwertyKeyboard.setShifted(false);
-                            if (keyboardView != null) keyboardView.invalidateAllKeys();
-                        }
-                        ic.commitText(String.valueOf(character), 1);
-                    }
-                    break;
-            }
-        } catch (Exception e) { Log.e(TAG, "Key error", e); }
-    }
 
-    private void convertCurrentText() {
-        InputConnection ic = getCurrentInputConnection();
-        if (ic == null) return;
-        CharSequence before = ic.getTextBeforeCursor(1000, 0);
-        if (before != null && before.length() > 0) {
-            String fullBefore = before.toString();
-            String lastRun = extractLastBanglaRun(fullBefore);
-            if (!lastRun.isEmpty()) {
-                int runLength = findLastBanglaRunLength(fullBefore, lastRun);
-                if (runLength > 0) { processBanglaText(lastRun, runLength); return; }
-            }
+            ic.commitText(
+                    text,
+                    1
+            );
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "onText commit failed",
+                    e
+            );
         }
     }
 
-    private void processBanglaText(String banglaText, int banglaLength) {
-        String cleanText = banglaText != null ? banglaText.trim() : "";
-        if (cleanText.isEmpty()) return;
-        String result = null;
-        try { result = DictionaryHelper.getInstance(this).lookup(cleanText); } catch (Exception ignored) {}
-        if (result == null || result.trim().isEmpty()) {
-            try { result = BanglaToBanglishConverter.convert(cleanText); } catch (Exception ignored) {}
-        }
-        commitBanglish(result != null ? result : cleanText, banglaLength);
+    @Override
+    public void onPress(
+            int primaryCode) {
     }
 
-    private void commitBanglish(String banglishText, int banglaLength) {
-        InputConnection ic = getCurrentInputConnection();
-        if (ic == null || banglishText == null) return;
-        if (banglaLength > 0) ic.deleteSurroundingText(banglaLength, 0);
-        ic.commitText(banglishText.trim() + " ", 1);
-        if (suggestionText != null) suggestionText.setText("এখানে বাংলা দেখা যাবে...");
+    @Override
+    public void onRelease(
+            int primaryCode) {
     }
 
-    private void showKeyboardPicker() {
-        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null) imm.showInputMethodPicker();
+    @Override
+    public void swipeLeft() {
     }
 
-    private void copySelectedText(InputConnection ic) {
-        CharSequence selected = ic.getSelectedText(0);
-        if (selected != null && selected.length() > 0) {
-            ClipboardManager cb = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            cb.setPrimaryClip(ClipData.newPlainText("Banglish", selected));
-            Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show();
-        }
+    @Override
+    public void swipeRight() {
     }
 
-    private void pasteClipboard(InputConnection ic) {
-        ClipboardManager cb = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        if (cb.hasPrimaryClip()) {
-            CharSequence txt = cb.getPrimaryClip().getItemAt(0).coerceToText(this);
-            if (txt != null) ic.commitText(txt, 1);
-        }
+    @Override
+    public void swipeDown() {
     }
 
-    private void startVoiceInput() {
-        if (suggestionText != null) suggestionText.setText("🎤 Listening...");
-        try { VoiceInputHelper.startListening(this, this); } catch (Exception ignored) {}
+    @Override
+    public void swipeUp() {
     }
-
-    private static String extractLastBanglaRun(String text) {
-        if (text == null) return "";
-        Matcher matcher = LAST_BANGLA_RUN.matcher(text);
-        String last = "";
-        while (matcher.find()) last = matcher.group();
-        return last != null ? last.trim() : "";
-    }
-
-    private static String extractLastBanglaToken(String text) {
-        if (text == null) return "";
-        Matcher matcher = LAST_BANGLA_TOKEN.matcher(text);
-        String last = "";
-        while (matcher.find()) last = matcher.group();
-        return last;
-    }
-
-    private static int findLastBanglaRunLength(String text, String run) {
-        if (text == null || run == null || run.isEmpty()) return 0;
-        int end = text.length();
-        while (end > 0 && Character.isWhitespace(text.charAt(end - 1))) end--;
-        int start = end;
-        while (start > 0) {
-            char c = text.charAt(start - 1);
-            if (isBanglaChar(c)) start--;
-            else if (Character.isWhitespace(c)) {
-                int j = start - 1;
-                while (j >= 0 && Character.isWhitespace(text.charAt(j))) j--;
-                if (j >= 0 && isBanglaChar(text.charAt(j))) {
-                    start = j + 1;
-                    while (start > 0 && isBanglaChar(text.charAt(start - 1))) start--;
-                } else break;
-            } else break;
-        }
-        return Math.max(0, end - start);
-    }
-    
-    private static boolean isBanglaChar(char c) { return c >= '\u0980' && c <= '\u09FF'; }
-
-    private boolean isUsableVoiceOrPreviewText(String t) {
-        return t != null && !t.trim().isEmpty() && !t.contains("Listening") && !t.contains("এখানে বাংলা");
-    }
-
-    @Override public void onText(CharSequence text) { if (text != null) getCurrentInputConnection().commitText(text, 1); }
-    @Override public void onPress(int pc) {}
-    @Override public void onRelease(int pc) {}
-    @Override public void swipeLeft() {}
-    @Override public void swipeRight() {}
-    @Override public void swipeDown() {}
-    @Override public void swipeUp() {}
 }
