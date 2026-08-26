@@ -30,11 +30,10 @@ public class BanglishIME extends InputMethodService
 
     private static final String TAG = "BanglishIME";
 
-    // বাটন কোডসমূহ
     private static final int KEYCODE_MIC = -100;
     private static final int KEYCODE_GLOBE = -101;
-    private static final int KEYCODE_SYMBOLS = -102; // নতুন
-    private static final int KEYCODE_EMOJI = -103;   // নতুন
+    private static final int KEYCODE_SYMBOLS = -102; 
+    private static final int KEYCODE_EMOJI = -103;   
     private static final int KEYCODE_DELETE = -5;
     private static final int KEYCODE_SHIFT = -1;
     private static final int KEYCODE_COPY = -201;
@@ -58,7 +57,7 @@ public class BanglishIME extends InputMethodService
     public void onCreate() {
         super.onCreate();
         try {
-            DictionaryHelper dh = DictionaryHelper.getInstance(this);
+            DictionaryHelper.getInstance(this);
             BanglaToBanglishConverter.loadDictionaryFromAssets(this, "dictionary.json");
         } catch (Exception e) {
             Log.e(TAG, "Dictionary initialization failed", e);
@@ -87,6 +86,7 @@ public class BanglishIME extends InputMethodService
 
         if (convertButton != null) convertButton.setOnClickListener(v -> convertCurrentText());
         if (micButton != null) micButton.setOnClickListener(v -> startVoiceInput());
+        
         if (suggestionText != null) {
             suggestionText.setOnClickListener(v -> {
                 String text = suggestionText.getText() != null ? suggestionText.getText().toString().trim() : "";
@@ -98,7 +98,24 @@ public class BanglishIME extends InputMethodService
         return root;
     }
 
-    // --- Panel logic for Number and Emoji ---
+    // --- Voice Input Result Handlers (এরর সমাধান করার জন্য এই মেথডগুলো যোগ করা হলো) ---
+    public void handleVoiceResult(String recognizedBangla) {
+        mainHandler.post(() -> {
+            if (suggestionText != null && recognizedBangla != null) {
+                suggestionText.setText(recognizedBangla);
+            }
+        });
+    }
+
+    public void handleVoicePartialResult(String partialText) {
+        mainHandler.post(() -> {
+            if (suggestionText != null && partialText != null) {
+                suggestionText.setText(partialText);
+            }
+        });
+    }
+
+    // --- Number & Emoji Panel Logic ---
     private void createPanelIfNeeded() {
         if (rootLayout == null || panelScroll != null) return;
         panelScroll = new ScrollView(this);
@@ -117,7 +134,7 @@ public class BanglishIME extends InputMethodService
     }
 
     private void showEmojiPanel() {
-        String[] emojis = {"😀", "😂", "😍", "😘", "😎", "😭", "😡", "👍", "👎", "❤️", "🔥", "🙏", "👏", "🎉", "🤔", "😢", "🌟", "💯", "✅", "❌", "ABC", "⌫"};
+        String[] emojis = {"😀", "😂", "😍", "😘", "😎", "😭", "👍", "❤️", "🔥", "🙏", "👏", "🎉", "🤔", "😢", "🌟", "💯", "ABC", "⌫"};
         showPanel(emojis, 7);
     }
 
@@ -164,8 +181,6 @@ public class BanglishIME extends InputMethodService
         return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
     }
 
-    // --- বিদ্যমান লজিক (অপরিবর্তিত) ---
-
     @Override
     public void onKey(int primaryCode, int[] keyCodes) {
         InputConnection ic = getCurrentInputConnection();
@@ -204,7 +219,7 @@ public class BanglishIME extends InputMethodService
         } catch (Exception e) { Log.e(TAG, "Key error", e); }
     }
 
-    // --- অন্যান্য হেল্পার মেথড (অপরিবর্তিত) ---
+    // --- Converter Logic (অপরিবর্তিত) ---
     private void convertCurrentText() {
         InputConnection ic = getCurrentInputConnection();
         if (ic == null) return;
@@ -222,12 +237,12 @@ public class BanglishIME extends InputMethodService
     private void processBanglaText(String banglaText, int banglaLength) {
         String cleanText = banglaText != null ? banglaText.trim() : "";
         if (cleanText.isEmpty()) return;
-        String banglishResult = null;
-        try { banglishResult = DictionaryHelper.getInstance(this).lookup(cleanText); } catch (Exception ignored) {}
-        if (banglishResult == null || banglishResult.trim().isEmpty()) {
-            try { banglishResult = BanglaToBanglishConverter.convert(cleanText); } catch (Exception ignored) {}
+        String result = null;
+        try { result = DictionaryHelper.getInstance(this).lookup(cleanText); } catch (Exception ignored) {}
+        if (result == null || result.trim().isEmpty()) {
+            try { result = BanglaToBanglishConverter.convert(cleanText); } catch (Exception ignored) {}
         }
-        commitBanglish(banglishResult, banglaLength);
+        commitBanglish(result != null ? result : cleanText, banglaLength);
     }
 
     private void commitBanglish(String banglishText, int banglaLength) {
@@ -262,12 +277,17 @@ public class BanglishIME extends InputMethodService
 
     private void startVoiceInput() {
         if (suggestionText != null) suggestionText.setText("🎤 Listening...");
-        try { VoiceInputHelper.startListening(this, this); } catch (Exception ignored) {}
+        try { VoiceInputHelper.startListening(this, (VoiceInputHelper.VoiceResultListener) this); } catch (Exception ignored) {}
     }
 
-    // Regex helpers
+    private static String extractLastBanglaToken(String text) {
+        Matcher matcher = LAST_BANGLA_TOKEN.matcher(text);
+        String last = "";
+        while (matcher.find()) last = matcher.group();
+        return last;
+    }
+
     private static String extractLastBanglaRun(String text) {
-        if (text == null) return "";
         Matcher matcher = LAST_BANGLA_RUN.matcher(text);
         String last = "";
         while (matcher.find()) last = matcher.group();
@@ -281,22 +301,21 @@ public class BanglishIME extends InputMethodService
         int start = end;
         while (start > 0) {
             char c = text.charAt(start - 1);
-            if (isBanglaChar(c)) start--;
+            if (c >= '\u0980' && c <= '\u09FF') start--;
             else if (Character.isWhitespace(c)) {
                 int j = start - 1;
                 while (j >= 0 && Character.isWhitespace(text.charAt(j))) j--;
-                if (j >= 0 && isBanglaChar(text.charAt(j))) {
+                if (j >= 0 && (text.charAt(j) >= '\u0980' && text.charAt(j) <= '\u09FF')) {
                     start = j + 1;
-                    while (start > 0 && isBanglaChar(text.charAt(start - 1))) start--;
+                    while (start > 0 && (text.charAt(start-1) >= '\u0980' && text.charAt(start-1) <= '\u09FF')) start--;
                 } else break;
             } else break;
         }
         return Math.max(0, end - start);
     }
     
-    private static boolean isBanglaChar(char c) { return c >= '\u0980' && c <= '\u09FF'; }
-    private static boolean isUsableVoiceOrPreviewText(String t) {
-        return t != null && !t.isEmpty() && !t.contains("Listening") && !t.contains("এখানে বাংলা");
+    private boolean isUsableVoiceOrPreviewText(String t) {
+        return t != null && !t.trim().isEmpty() && !t.contains("Listening") && !t.contains("এখানে বাংলা");
     }
 
     @Override public void onText(CharSequence text) { if (text != null) getCurrentInputConnection().commitText(text, 1); }
