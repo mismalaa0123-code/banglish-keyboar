@@ -25,12 +25,12 @@ import android.widget.Toast;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+// এখানে VoiceResultListener যোগ করা হয়েছে এরর কাটানোর জন্য
 public class BanglishIME extends InputMethodService
-        implements KeyboardView.OnKeyboardActionListener {
+        implements KeyboardView.OnKeyboardActionListener, VoiceInputHelper.VoiceResultListener {
 
     private static final String TAG = "BanglishIME";
 
-    // বাটন কোডসমূহ
     private static final int KEYCODE_MIC = -100;
     private static final int KEYCODE_GLOBE = -101;
     private static final int KEYCODE_SYMBOLS = -102; 
@@ -99,7 +99,8 @@ public class BanglishIME extends InputMethodService
         return root;
     }
 
-    // --- Voice Input Result Handlers (এই মেথডগুলো অবশ্যই থাকতে হবে) ---
+    // --- Voice Input Listeners (নিচে implement করা হলো) ---
+    @Override
     public void handleVoiceResult(String recognizedBangla) {
         mainHandler.post(() -> {
             if (suggestionText != null && recognizedBangla != null) {
@@ -108,6 +109,7 @@ public class BanglishIME extends InputMethodService
         });
     }
 
+    @Override
     public void handleVoicePartialResult(String partialText) {
         mainHandler.post(() -> {
             if (suggestionText != null && partialText != null) {
@@ -277,7 +279,7 @@ public class BanglishIME extends InputMethodService
 
     private void startVoiceInput() {
         if (suggestionText != null) suggestionText.setText("🎤 Listening...");
-        try { VoiceInputHelper.startListening(this, (VoiceInputHelper.VoiceResultListener) this); } catch (Exception ignored) {}
+        try { VoiceInputHelper.startListening(this, this); } catch (Exception ignored) {}
     }
 
     private static String extractLastBanglaRun(String text) {
@@ -288,6 +290,14 @@ public class BanglishIME extends InputMethodService
         return last != null ? last.trim() : "";
     }
 
+    private static String extractLastBanglaToken(String text) {
+        if (text == null) return "";
+        Matcher matcher = LAST_BANGLA_TOKEN.matcher(text);
+        String last = "";
+        while (matcher.find()) last = matcher.group();
+        return last;
+    }
+
     private static int findLastBanglaRunLength(String text, String run) {
         if (text == null || run == null || run.isEmpty()) return 0;
         int end = text.length();
@@ -295,19 +305,25 @@ public class BanglishIME extends InputMethodService
         int start = end;
         while (start > 0) {
             char c = text.charAt(start - 1);
-            if (c >= '\u0980' && c <= '\u09FF') start--;
+            if (isBanglaChar(c)) start--;
             else if (Character.isWhitespace(c)) {
                 int j = start - 1;
                 while (j >= 0 && Character.isWhitespace(text.charAt(j))) j--;
-                if (j >= 0 && (text.charAt(j) >= '\u0980' && text.charAt(j) <= '\u09FF')) {
+                if (j >= 0 && isBanglaChar(text.charAt(j))) {
                     start = j + 1;
-                    while (start > 0 && (text.charAt(start-1) >= '\u0980' && text.charAt(start-1) <= '\u09FF')) start--;
+                    while (start > 0 && isBanglaChar(text.charAt(start - 1))) start--;
                 } else break;
             } else break;
         }
         return Math.max(0, end - start);
     }
     
+    private static boolean isBanglaChar(char c) { return c >= '\u0980' && c <= '\u09FF'; }
+
+    private boolean isUsableVoiceOrPreviewText(String t) {
+        return t != null && !t.trim().isEmpty() && !t.contains("Listening") && !t.contains("এখানে বাংলা");
+    }
+
     @Override public void onText(CharSequence text) { if (text != null) getCurrentInputConnection().commitText(text, 1); }
     @Override public void onPress(int pc) {}
     @Override public void onRelease(int pc) {}
