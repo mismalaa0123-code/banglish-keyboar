@@ -52,6 +52,14 @@
 
     </LinearLayout>
 
+    <!-- Start.io Banner: বাংলা Keyboard-এর জন্য -->
+    <FrameLayout
+        android:id="@+id/startio_banner_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:visibility="gone" />
+
     <!-- Keyboard View -->
     <android.inputmethodservice.KeyboardView
         android:id="@+id/keyboard_view"
