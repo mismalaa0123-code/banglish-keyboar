@@ -13,6 +13,8 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.ExtractedText;
+import android.view.inputmethod.ExtractedTextRequest;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
@@ -30,15 +32,22 @@ public class BanglishIME extends InputMethodService
 
     private static final String TAG = "BanglishIME";
 
-    // আগের voice code
+    // আগের Voice code
     private static final int KEYCODE_MIC = -100;
 
     // আগের Globe code
     private static final int KEYCODE_GLOBE = -101;
 
-    // শুধু নতুন Number এবং Emoji button
+    /*
+     * Number / Emoji key codes.
+     * সব পুরোনো ও নতুন code support করা হয়েছে,
+     * তাই qwerty.xml-এ -301/-302 অথবা -102/-103 থাকলেও কাজ করবে।
+     */
     private static final int KEYCODE_NUMBER_SYMBOL = -301;
     private static final int KEYCODE_EMOJI = -302;
+
+    private static final int KEYCODE_NUMBER_SYMBOL_LEGACY = -102;
+    private static final int KEYCODE_EMOJI_LEGACY = -103;
 
     // আগের keyboard controls
     private static final int KEYCODE_DELETE = -5;
@@ -61,13 +70,17 @@ public class BanglishIME extends InputMethodService
     private Keyboard qwertyKeyboard;
     private TextView suggestionText;
 
-    // শুধু Number / Emoji panel-এর জন্য নতুন
+    // Number / Emoji panel-এর জন্য
     private LinearLayout rootLayout;
     private ScrollView panelScroll;
     private LinearLayout panelContent;
 
+    // Voice ও Backspace long press-এর জন্য
     private final Handler mainHandler =
             new Handler(Looper.getMainLooper());
+
+    private Runnable backspaceLongPressRunnable;
+    private boolean backspaceLongPressed = false;
 
     @Override
     public void onCreate() {
@@ -140,7 +153,7 @@ public class BanglishIME extends InputMethodService
                         R.id.startio_banner_container
                 );
 
-        // আগের Start.io Banner
+        // Start.io code অপরিবর্তিত
         StartIoBannerHelper.attach(
                 this,
                 bannerContainer
@@ -192,14 +205,13 @@ public class BanglishIME extends InputMethodService
             });
         }
 
-        // শুধু Number / Emoji panel-এর জন্য
         createPanelIfNeeded();
 
         return root;
     }
 
     /*
-     * এই দুইটি method আপনার আগের VoiceInputHelper-এর জন্য দরকার।
+     * VoiceInputHelper.java এই দুটি method ব্যবহার করে।
      * এগুলো remove করবেন না।
      */
 
@@ -317,7 +329,8 @@ public class BanglishIME extends InputMethodService
 
                 start--;
 
-            } else if (Character.isWhitespace(c)) {
+            } else if (
+                    Character.isWhitespace(c)) {
 
                 int j = start - 1;
 
@@ -632,15 +645,29 @@ public class BanglishIME extends InputMethodService
 
             switch (primaryCode) {
 
-                // নতুন Number / Symbol panel
+                /*
+                 * Number/Symbol support:
+                 * -301 = নতুন qwerty.xml
+                 * -102 = পুরোনো qwerty.xml
+                 * -2   = Android standard number mode
+                 */
                 case KEYCODE_NUMBER_SYMBOL:
+                case KEYCODE_NUMBER_SYMBOL_LEGACY:
+                case Keyboard.KEYCODE_MODE_CHANGE:
 
                     showNumberSymbolPanel();
 
                     break;
 
-                // নতুন Emoji panel
+                /*
+                 * Emoji support:
+                 * -302 = নতুন qwerty.xml
+                 * -103 = পুরোনো qwerty.xml
+                 * -10  = অন্য keyboard layout compatibility
+                 */
                 case KEYCODE_EMOJI:
+                case KEYCODE_EMOJI_LEGACY:
+                case -10:
 
                     showEmojiPanel();
 
@@ -656,23 +683,28 @@ public class BanglishIME extends InputMethodService
                 // আগের Globe
                 case KEYCODE_GLOBE:
 
+                    hidePanel();
                     showKeyboardPicker();
 
                     break;
 
-                // আগের Backspace
+                /*
+                 * Backspace:
+                 * Tap = এক text unit delete
+                 * Long press = সব text clear
+                 */
                 case KEYCODE_DELETE:
 
-                    ic.deleteSurroundingText(
-                            1,
-                            0
-                    );
+                    if (!backspaceLongPressed) {
+                        deleteOneTextUnit(ic);
+                    }
 
                     break;
 
                 // আগের Copy
                 case KEYCODE_COPY:
 
+                    hidePanel();
                     copySelectedText(ic);
 
                     break;
@@ -680,12 +712,15 @@ public class BanglishIME extends InputMethodService
                 // আগের Paste
                 case KEYCODE_PASTE:
 
+                    hidePanel();
                     pasteClipboard(ic);
 
                     break;
 
                 // আগের Shift
                 case KEYCODE_SHIFT:
+
+                    hidePanel();
 
                     if (qwertyKeyboard != null) {
 
@@ -705,6 +740,8 @@ public class BanglishIME extends InputMethodService
                 // আগের Enter
                 case 10:
 
+                    hidePanel();
+
                     ic.commitText(
                             "\n",
                             1
@@ -713,6 +750,8 @@ public class BanglishIME extends InputMethodService
                     break;
 
                 default:
+
+                    hidePanel();
 
                     if (primaryCode >= 0 &&
                             primaryCode <=
@@ -759,6 +798,272 @@ public class BanglishIME extends InputMethodService
                             + primaryCode,
                     e
             );
+        }
+    }
+
+    /*
+     * Backspace button press শুরু হলে 650ms অপেক্ষা করবে।
+     * 650ms ধরে রাখলে পুরো text clear করবে।
+     */
+
+    @Override
+    public void onPress(
+            int primaryCode) {
+
+        if (primaryCode != KEYCODE_DELETE) {
+            return;
+        }
+
+        backspaceLongPressed = false;
+
+        if (backspaceLongPressRunnable != null) {
+            mainHandler.removeCallbacks(
+                    backspaceLongPressRunnable
+            );
+        }
+
+        backspaceLongPressRunnable =
+                new Runnable() {
+                    @Override
+                    public void run() {
+
+                        backspaceLongPressed = true;
+                        clearAllCurrentText();
+                    }
+                };
+
+        mainHandler.postDelayed(
+                backspaceLongPressRunnable,
+                650
+        );
+    }
+
+    /*
+     * Button ছেড়ে দিলে pending long press বন্ধ হবে।
+     * Tap delete onKey() থেকে হয়।
+     */
+
+    @Override
+    public void onRelease(
+            int primaryCode) {
+
+        if (primaryCode == KEYCODE_DELETE &&
+                backspaceLongPressRunnable != null) {
+
+            mainHandler.removeCallbacks(
+                    backspaceLongPressRunnable
+            );
+        }
+    }
+
+    /*
+     * একবার backspace চাপলে একটি Unicode typing unit delete:
+     * - বাংলা অক্ষর + কার
+     * - যুক্তবর্ণ
+     * - হসন্ত
+     * - emoji surrogate pair
+     */
+
+    private void deleteOneTextUnit(
+            InputConnection ic) {
+
+        try {
+
+            CharSequence selected =
+                    ic.getSelectedText(0);
+
+            if (selected != null &&
+                    selected.length() > 0) {
+
+                ic.commitText("", 1);
+                return;
+            }
+
+            CharSequence beforeCursor =
+                    ic.getTextBeforeCursor(
+                            32,
+                            0
+                    );
+
+            int deleteLength =
+                    getDeleteLength(beforeCursor);
+
+            ic.deleteSurroundingText(
+                    deleteLength,
+                    0
+            );
+
+        } catch (Exception e) {
+
+            try {
+                ic.deleteSurroundingText(1, 0);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private int getDeleteLength(
+            CharSequence beforeCursor) {
+
+        if (beforeCursor == null ||
+                beforeCursor.length() == 0) {
+            return 1;
+        }
+
+        int length =
+                beforeCursor.length();
+
+        char last =
+                beforeCursor.charAt(
+                        length - 1
+                );
+
+        // Emoji / surrogate pair
+        if (Character.isLowSurrogate(last) &&
+                length >= 2) {
+
+            char previous =
+                    beforeCursor.charAt(
+                            length - 2
+                    );
+
+            if (Character.isHighSurrogate(previous)) {
+                return 2;
+            }
+        }
+
+        // সাধারণ English/symbol character
+        if (!isBanglaChar(last)) {
+            return 1;
+        }
+
+        int index = length;
+
+        // শেষের কার, হসন্ত, অনুস্বর ইত্যাদি বাদ দিচ্ছে
+        while (index > 0 &&
+                isBanglaMark(
+                        beforeCursor.charAt(
+                                index - 1))) {
+
+            index--;
+        }
+
+        // কারের আগে থাকা মূল বাংলা অক্ষর
+        if (index > 0 &&
+                isBanglaBaseCharacter(
+                        beforeCursor.charAt(
+                                index - 1))) {
+
+            index--;
+
+            /*
+             * যুক্তবর্ণ হলে:
+             * ক + ্ + ষ
+             * একবার backspace দিলে পুরো যুক্ত unit delete হবে।
+             */
+            while (index >= 2 &&
+                    beforeCursor.charAt(
+                            index - 1) == '\u09CD' &&
+                    isBanglaBaseCharacter(
+                            beforeCursor.charAt(
+                                    index - 2))) {
+
+                index -= 2;
+            }
+
+            return Math.max(
+                    1,
+                    length - index
+            );
+        }
+
+        return 1;
+    }
+
+    private boolean isBanglaMark(
+            char c) {
+
+        return c == '\u0981'  // ঁ
+                || c == '\u0982' // ং
+                || c == '\u0983' // ঃ
+                || c == '\u09BC' // ়
+                || (c >= '\u09BE' && c <= '\u09CC')
+                || c == '\u09CD' // ্
+                || c == '\u09D7'; // ৗ
+    }
+
+    private boolean isBanglaBaseCharacter(
+            char c) {
+
+        return (c >= '\u0985' && c <= '\u09B9')
+                || c == '\u09CE'
+                || c == '\u09DC'
+                || c == '\u09DD'
+                || c == '\u09DF';
+    }
+
+    /*
+     * Backspace long press:
+     * পুরো current editor text clear করার চেষ্টা করবে।
+     */
+
+    private void clearAllCurrentText() {
+
+        InputConnection ic =
+                getCurrentInputConnection();
+
+        if (ic == null) {
+            return;
+        }
+
+        try {
+
+            ExtractedTextRequest request =
+                    new ExtractedTextRequest();
+
+            ExtractedText extractedText =
+                    ic.getExtractedText(
+                            request,
+                            0
+                    );
+
+            if (extractedText != null &&
+                    extractedText.text != null) {
+
+                int textLength =
+                        extractedText.text.length();
+
+                ic.beginBatchEdit();
+
+                ic.setSelection(
+                        0,
+                        textLength
+                );
+
+                ic.commitText(
+                        "",
+                        1
+                );
+
+                ic.endBatchEdit();
+
+            } else {
+
+                ic.deleteSurroundingText(
+                        10000,
+                        10000
+                );
+            }
+
+        } catch (Exception e) {
+
+            try {
+                ic.deleteSurroundingText(
+                        10000,
+                        10000
+                );
+            } catch (Exception ignored) {
+            }
         }
     }
 
@@ -912,8 +1217,8 @@ public class BanglishIME extends InputMethodService
         try {
 
             /*
-             * আপনার original code-এর মতোই রাখা হয়েছে।
-             * এখানে VoiceResultListener বা অন্য interface নেই।
+             * আপনার original project-এর call।
+             * VoiceInputHelper.java পরিবর্তন করা হয়নি।
              */
             VoiceInputHelper.startListening(
                     this,
@@ -938,57 +1243,67 @@ public class BanglishIME extends InputMethodService
     }
 
     /*
-     * Number / Emoji Panel
-     * এগুলো শুধুই নতুন যোগ হয়েছে।
+     * Number এবং Emoji panel methods
      */
 
     private void createPanelIfNeeded() {
 
-        if (rootLayout == null ||
-                panelScroll != null) {
-            return;
+        try {
+
+            if (rootLayout == null ||
+                    panelScroll != null) {
+                return;
+            }
+
+            panelScroll =
+                    new ScrollView(this);
+
+            panelScroll.setBackgroundColor(
+                    0xFFE2E5E9
+            );
+
+            panelScroll.setVisibility(
+                    View.GONE
+            );
+
+            panelContent =
+                    new LinearLayout(this);
+
+            panelContent.setOrientation(
+                    LinearLayout.VERTICAL
+            );
+
+            panelContent.setPadding(
+                    dp(5),
+                    dp(5),
+                    dp(5),
+                    dp(5)
+            );
+
+            panelScroll.addView(
+                    panelContent,
+                    new ScrollView.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+            );
+
+            rootLayout.addView(
+                    panelScroll,
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            dp(220)
+                    )
+            );
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Panel creation failed",
+                    e
+            );
         }
-
-        panelScroll =
-                new ScrollView(this);
-
-        panelScroll.setBackgroundColor(
-                0xFFE2E5E9
-        );
-
-        panelScroll.setVisibility(
-                View.GONE
-        );
-
-        panelContent =
-                new LinearLayout(this);
-
-        panelContent.setOrientation(
-                LinearLayout.VERTICAL
-        );
-
-        panelContent.setPadding(
-                dp(5),
-                dp(5),
-                dp(5),
-                dp(5)
-        );
-
-        panelScroll.addView(
-                panelContent,
-                new ScrollView.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                )
-        );
-
-        rootLayout.addView(
-                panelScroll,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        dp(220)
-                )
-        );
     }
 
     private void showNumberSymbolPanel() {
@@ -1033,124 +1348,138 @@ public class BanglishIME extends InputMethodService
             String[] items,
             int columns) {
 
-        createPanelIfNeeded();
+        try {
 
-        if (panelScroll == null ||
-                panelContent == null ||
-                keyboardView == null) {
-            return;
-        }
+            createPanelIfNeeded();
 
-        keyboardView.setVisibility(
-                View.GONE
-        );
+            if (panelScroll == null ||
+                    panelContent == null ||
+                    keyboardView == null) {
+                return;
+            }
 
-        panelScroll.setVisibility(
-                View.VISIBLE
-        );
+            panelContent.removeAllViews();
 
-        panelContent.removeAllViews();
-
-        int index = 0;
-
-        while (index < items.length) {
-
-            LinearLayout row =
-                    new LinearLayout(this);
-
-            row.setOrientation(
-                    LinearLayout.HORIZONTAL
+            keyboardView.setVisibility(
+                    View.GONE
             );
 
-            panelContent.addView(
-                    row,
-                    new LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            dp(42)
-                    )
+            panelScroll.setVisibility(
+                    View.VISIBLE
             );
 
-            for (int i = 0; i < columns; i++) {
+            panelScroll.requestLayout();
+            rootLayout.requestLayout();
 
-                if (index < items.length) {
+            int index = 0;
 
-                    final String value =
-                            items[index];
+            while (index < items.length) {
 
-                    TextView key =
-                            new TextView(this);
+                LinearLayout row =
+                        new LinearLayout(this);
 
-                    key.setText(value);
+                row.setOrientation(
+                        LinearLayout.HORIZONTAL
+                );
 
-                    key.setGravity(
-                            Gravity.CENTER
-                    );
+                panelContent.addView(
+                        row,
+                        new LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                dp(44)
+                        )
+                );
 
-                    key.setTextColor(
-                            0xFF202124
-                    );
+                for (int i = 0; i < columns; i++) {
 
-                    if ("ABC".equals(value) ||
-                            "⌫".equals(value)) {
+                    if (index < items.length) {
 
-                        key.setTextSize(14);
+                        final String value =
+                                items[index];
+
+                        TextView key =
+                                new TextView(this);
+
+                        key.setText(value);
+
+                        key.setGravity(
+                                Gravity.CENTER
+                        );
+
+                        key.setTextColor(
+                                0xFF202124
+                        );
+
+                        if ("ABC".equals(value) ||
+                                "⌫".equals(value)) {
+
+                            key.setTextSize(14);
+
+                        } else {
+
+                            key.setTextSize(20);
+                        }
+
+                        key.setPadding(
+                                dp(2),
+                                dp(2),
+                                dp(2),
+                                dp(2)
+                        );
+
+                        key.setBackgroundResource(
+                                R.drawable.keyboard_key_background
+                        );
+
+                        key.setOnClickListener(
+                                v -> handlePanelKey(value)
+                        );
+
+                        LinearLayout.LayoutParams params =
+                                new LinearLayout.LayoutParams(
+                                        0,
+                                        dp(39),
+                                        1f
+                                );
+
+                        params.setMargins(
+                                dp(2),
+                                dp(2),
+                                dp(2),
+                                dp(2)
+                        );
+
+                        row.addView(
+                                key,
+                                params
+                        );
+
+                        index++;
 
                     } else {
 
-                        key.setTextSize(20);
+                        View empty =
+                                new View(this);
+
+                        row.addView(
+                                empty,
+                                new LinearLayout.LayoutParams(
+                                        0,
+                                        dp(39),
+                                        1f
+                                )
+                        );
                     }
-
-                    key.setPadding(
-                            dp(2),
-                            dp(2),
-                            dp(2),
-                            dp(2)
-                    );
-
-                    key.setBackgroundResource(
-                            R.drawable.keyboard_key_background
-                    );
-
-                    key.setOnClickListener(
-                            v -> handlePanelKey(value)
-                    );
-
-                    LinearLayout.LayoutParams params =
-                            new LinearLayout.LayoutParams(
-                                    0,
-                                    dp(38),
-                                    1f
-                            );
-
-                    params.setMargins(
-                            dp(2),
-                            dp(2),
-                            dp(2),
-                            dp(2)
-                    );
-
-                    row.addView(
-                            key,
-                            params
-                    );
-
-                    index++;
-
-                } else {
-
-                    View empty =
-                            new View(this);
-
-                    row.addView(
-                            empty,
-                            new LinearLayout.LayoutParams(
-                                    0,
-                                    dp(38),
-                                    1f
-                            )
-                    );
                 }
             }
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Panel show failed",
+                    e
+            );
         }
     }
 
@@ -1173,10 +1502,7 @@ public class BanglishIME extends InputMethodService
 
             } else if ("⌫".equals(value)) {
 
-                ic.deleteSurroundingText(
-                        1,
-                        0
-                );
+                deleteOneTextUnit(ic);
 
             } else {
 
@@ -1198,17 +1524,28 @@ public class BanglishIME extends InputMethodService
 
     private void hidePanel() {
 
-        if (panelScroll != null) {
+        try {
 
-            panelScroll.setVisibility(
-                    View.GONE
-            );
-        }
+            if (panelScroll != null) {
 
-        if (keyboardView != null) {
+                panelScroll.setVisibility(
+                        View.GONE
+                );
+            }
 
-            keyboardView.setVisibility(
-                    View.VISIBLE
+            if (keyboardView != null) {
+
+                keyboardView.setVisibility(
+                        View.VISIBLE
+                );
+            }
+
+        } catch (Exception e) {
+
+            Log.e(
+                    TAG,
+                    "Hide panel failed",
+                    e
             );
         }
     }
@@ -1260,16 +1597,6 @@ public class BanglishIME extends InputMethodService
     }
 
     @Override
-    public void onPress(
-            int primaryCode) {
-    }
-
-    @Override
-    public void onRelease(
-            int primaryCode) {
-    }
-
-    @Override
     public void swipeLeft() {
     }
 
@@ -1283,5 +1610,17 @@ public class BanglishIME extends InputMethodService
 
     @Override
     public void swipeUp() {
+    }
+
+    @Override
+    public void onDestroy() {
+
+        if (backspaceLongPressRunnable != null) {
+            mainHandler.removeCallbacks(
+                    backspaceLongPressRunnable
+            );
+        }
+
+        super.onDestroy();
     }
 }
