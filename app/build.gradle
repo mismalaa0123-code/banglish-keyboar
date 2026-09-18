@@ -2,23 +2,51 @@ plugins {
     id 'com.android.application'
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+}
+
+def geminiApiKey = System.getenv('GEMINI_API_KEY') ?: localProperties.getProperty('GEMINI_API_KEY', '')
+
 android {
     namespace 'com.arafatakaid.banglishkeyboard'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.arafatakaid.banglishkeyboard"
+        applicationId 'com.arafatakaid.banglishkeyboard'
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
+        versionName "1.0.${System.getenv('GITHUB_RUN_NUMBER') ?: '1'}"
 
-        buildConfigField "String", "GEMINI_API_KEY", "\"\""
+        buildConfigField 'String', 'GEMINI_API_KEY', '"' + geminiApiKey + '"'
+    }
+
+    signingConfigs {
+        release {
+            if (System.getenv('KEYSTORE_FILE') != null &&
+                    System.getenv('KEYSTORE_PASSWORD') != null &&
+                    System.getenv('KEY_ALIAS') != null &&
+                    System.getenv('KEY_PASSWORD') != null) {
+                storeFile file(System.getenv('KEYSTORE_FILE'))
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS')
+                keyPassword System.getenv('KEY_PASSWORD')
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            if (System.getenv('KEYSTORE_FILE') != null &&
+                    System.getenv('KEYSTORE_PASSWORD') != null &&
+                    System.getenv('KEY_ALIAS') != null &&
+                    System.getenv('KEY_PASSWORD') != null) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 
@@ -29,19 +57,6 @@ android {
 
     buildFeatures {
         buildConfig true
-    }
-
-    def localProps = new Properties()
-    def localFile = rootProject.file('local.properties')
-
-    if (localFile.exists()) {
-        localProps.load(new FileInputStream(localFile))
-    }
-
-    defaultConfig {
-        buildConfigField "String",
-                "GEMINI_API_KEY",
-                "\"${localProps.getProperty('GEMINI_API_KEY', '')}\""
     }
 }
 
